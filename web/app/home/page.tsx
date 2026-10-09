@@ -4,7 +4,18 @@ import {
   ChevronRight, Activity, PlusCircle, Clock, ShieldAlert, CheckCircle2, History
 } from 'lucide-react';
 
+
+import { useState, useEffect } from 'react';
+import { fetchAPI } from '@/lib/api';
+
 export default function Home() {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    fetchAPI('/overview').then(setData).catch(console.error);
+  }, []);
+  
+  if (!data) return <div className="p-8 text-slate-500">Loading...</div>;
+
   return (
     <div className="space-y-6">
       {/* Continuity Banner */}
@@ -28,7 +39,7 @@ export default function Home() {
         <StatCard title="Unified Records" value="142" icon={FileText} color="bg-blue-100 text-blue-600" />
         <StatCard title="Connected Sources" value="4" icon={Link2} color="bg-indigo-100 text-indigo-600" />
         <StatCard title="Reconciliation Needs" value="2" icon={AlertTriangle} color="bg-rose-100 text-rose-600" alert />
-        <StatCard title="Active Shares" value="1" icon={Share2} color="bg-emerald-100 text-emerald-600" />
+        <StatCard title="Active Shares" value="0" icon={Share2} color="bg-emerald-100 text-emerald-600" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
