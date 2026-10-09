@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, HTTPException, status
 from app.schemas import OTPRequest, OTPVerify, Token
-from app.deps import SessionDep
+from app.deps import SessionDep, CurrentUser
 from app.models import User
 from app.config import settings
 from app.auth import create_access_token
@@ -40,6 +40,7 @@ def verify_otp(req: OTPVerify, db: SessionDep):
     access_token = create_access_token(subject=user.id)
     return {"access_token": access_token, "token_type": "bearer"}
 
+from pydantic import BaseModel
 class UpdateMeRequest(BaseModel):
     emergency: str | None = None
     blood_group: str | None = None
