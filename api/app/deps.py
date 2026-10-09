@@ -33,7 +33,7 @@ def get_current_user(db: SessionDep, token: TokenDep) -> User:
         user_id: str = payload.get("sub")
         if user_id is None:
             raise credentials_exception
-    except (JWTError, ValidationError):
+    except (JWTError, ValidationError, Exception):
         raise credentials_exception
         
     user = db.query(User).filter(User.id == user_id).first()
