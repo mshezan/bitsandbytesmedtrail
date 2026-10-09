@@ -39,3 +39,20 @@ def verify_otp(req: OTPVerify, db: SessionDep):
             
     access_token = create_access_token(subject=user.id)
     return {"access_token": access_token, "token_type": "bearer"}
+
+class UpdateMeRequest(BaseModel):
+    emergency: str | None = None
+    blood_group: str | None = None
+
+@router.patch("/me")
+def update_me(req: UpdateMeRequest, user: CurrentUser, db: SessionDep):
+    if user.role == "patient":
+        from app.models import Patient
+        patient = db.query(Patient).filter(Patient.user_id == user.id).first()
+        if patient:
+            if req.emergency is not None:
+                patient.emergency = req.emergency
+            if req.blood_group is not None:
+                patient.blood_group = req.blood_group
+            db.commit()
+    return {"status": "updated"}

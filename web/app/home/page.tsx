@@ -7,11 +7,47 @@ import {
 
 import { useState, useEffect } from 'react';
 import { fetchAPI } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
+  const router = useRouter();
+  
+  const handleRequest = async (providerName: string) => {
+    try {
+      await fetchAPI('/providers/request', {
+        method: 'POST',
+        body: JSON.stringify({ provider_name: providerName })
+      });
+      alert('Records requested successfully from ' + providerName);
+    } catch(e) {
+      alert('Failed to request records');
+    }
+  };
+
+  const handleResolve = async (id: string, action: string) => {
+    try {
+      await fetchAPI(`/medications/${id}/resolve`, {
+        method: 'POST',
+        body: JSON.stringify({ action })
+      });
+      alert('Conflict resolved: ' + action);
+      const newData = await fetchAPI('/overview');
+      setData(newData);
+    } catch(e) {
+      alert('Failed to resolve');
+    }
+  };
+
   useEffect(() => {
-    fetchAPI('/overview').then(setData).catch(console.error);
+    
+fetchAPI('/overview').then(setData).catch(err => {
+    console.error(err);
+    if (typeof window !== "undefined") {
+        window.location.href = "/login";
+    }
+});
+
   }, []);
   
   if (!data) return <div className="p-8 text-slate-500">Loading...</div>;
@@ -25,7 +61,7 @@ export default function Home() {
           <p className="text-emerald-100 max-w-2xl text-sm leading-relaxed mb-4">
             Your medical records are fragmented across multiple providers. We unify them to ensure your next clinician has the complete picture, preventing duplicate tests and medication conflicts.
           </p>
-          <button className="bg-white text-emerald-800 px-4 py-2 rounded-lg font-medium text-sm hover:bg-emerald-50 transition shadow-sm">
+          <button onClick={() => router.push("/handover")} className="bg-white text-emerald-800 px-4 py-2 rounded-lg font-medium text-sm hover:bg-emerald-50 transition shadow-sm">
             Generate Handover Packet
           </button>
         </div>
@@ -59,14 +95,14 @@ export default function Home() {
                     <h4 className="font-semibold text-sm text-slate-800">Possible Medication Conflict</h4>
                     <p className="text-xs text-slate-500 mt-0.5">Lisinopril from UCSF and Losartan from City Clinic.</p>
                   </div>
-                  <button className="text-xs font-semibold text-emerald-600 px-3 py-1 bg-white border border-slate-200 rounded-md">Resolve</button>
+                  <button onClick={() => { const act = prompt("Resolve conflict (keep / discontinued / ask_doctor):", "keep"); if(act) handleResolve("test-id", act); }} className="text-xs font-semibold text-emerald-600 px-3 py-1 bg-white border border-slate-200 rounded-md">Resolve</button>
                </div>
                <div className="flex items-start justify-between p-3 rounded-xl border border-slate-100 bg-slate-50 cursor-pointer hover:bg-slate-100 transition">
                   <div>
                     <h4 className="font-semibold text-sm text-slate-800">Missing Provider Record</h4>
                     <p className="text-xs text-slate-500 mt-0.5">Discharge summary from Valley Hospital ER missing.</p>
                   </div>
-                  <button className="text-xs font-semibold text-emerald-600 px-3 py-1 bg-white border border-slate-200 rounded-md">Request</button>
+                  <button onClick={() => handleRequest("Valley Hospital ER")} className="text-xs font-semibold text-emerald-600 px-3 py-1 bg-white border border-slate-200 rounded-md">Request</button>
                </div>
             </div>
           </div>
@@ -75,7 +111,7 @@ export default function Home() {
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-slate-800">Recent Additions</h2>
-              <button className="text-emerald-600 text-sm font-medium hover:text-emerald-700">View timeline</button>
+              <button onClick={() => router.push("/timeline")} className="text-emerald-600 text-sm font-medium hover:text-emerald-700">View timeline</button>
             </div>
             <div className="space-y-6">
               {[
@@ -127,7 +163,7 @@ export default function Home() {
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-slate-800">Sources</h2>
-              <button className="text-slate-400 hover:text-emerald-600"><PlusCircle className="h-5 w-5" /></button>
+              <button onClick={() => router.push("/connect")} className="text-slate-400 hover:text-emerald-600"><PlusCircle className="h-5 w-5" /></button>
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
@@ -160,7 +196,7 @@ export default function Home() {
                 </div>
                 <span className="flex h-2 w-2 rounded-full bg-emerald-500"></span>
               </div>
-              <button className="w-full py-2 mt-2 flex items-center justify-center text-sm font-medium text-emerald-600 hover:bg-emerald-50 rounded-lg transition border border-emerald-100">
+              <button onClick={() => router.push("/connect")} className="w-full py-2 mt-2 flex items-center justify-center text-sm font-medium text-emerald-600 hover:bg-emerald-50 rounded-lg transition border border-emerald-100">
                 <Link2 className="h-4 w-4 mr-2" />
                 Connect New Source
               </button>
@@ -173,7 +209,7 @@ export default function Home() {
                <div>
                   <h3 className="font-semibold text-emerald-800 text-sm">Emergency Card Ready</h3>
                   <p className="text-xs text-emerald-700 mt-1 mb-3">Your vital information is configured for emergency access.</p>
-                  <button className="text-xs font-bold bg-emerald-600 text-white px-3 py-1.5 rounded-md hover:bg-emerald-700">View Card</button>
+                  <button onClick={() => router.push("/emergency")} className="text-xs font-bold bg-emerald-600 text-white px-3 py-1.5 rounded-md hover:bg-emerald-700">View Card</button>
                </div>
              </div>
           </div>

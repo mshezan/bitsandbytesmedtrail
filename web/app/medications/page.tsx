@@ -10,10 +10,19 @@ export default function Medications() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchAPI('/medications/reconciled').then(data => {
+    
+fetchAPI('/medications/reconciled').then(data => {
+
       setMeds(data.reconciled || []);
       setLoading(false);
-    }).catch(console.error);
+    
+}).catch(err => {
+    console.error(err);
+    if (typeof window !== "undefined") {
+        window.location.href = "/login";
+    }
+});
+
   }, []);
 
   const resolveConflict = async (id, action) => {
