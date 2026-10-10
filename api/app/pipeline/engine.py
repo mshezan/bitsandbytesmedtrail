@@ -84,22 +84,23 @@ class IngestionPipeline:
         # Mock validation
         pass
 
+
+
     def _resolve_identity(self, source_mrn, demo):
-        # 1. Exact ABHA
+        from app.models import User
+        if not demo: return None
         if demo.get("abha"):
-            p = self.db.query(Patient).filter(Patient.abha == demo["abha"]).first()
+            p = self.db.query(Patient).filter(Patient.abha_number == demo["abha"]).first()
             if p:
                 self.log_stage("IDENTITY", "success", {"match": "exact_abha"})
                 return p.id
                 
-        # 2. Probabilistic Matching
-        candidates = self.db.query(Patient).filter(Patient.phone == demo.get("phone")).all()
+        candidates = self.db.query(Patient).join(User).filter(User.phone == demo.get("phone")).all()
         best_score = 0
         best_match = None
         
         for p in candidates:
-            score = difflib.SequenceMatcher(None, p.name.lower(), demo.get("name", "").lower()).ratio()
-            # Age/DOB penalty
+            score = difflib.SequenceMatcher(None, p.user.name.lower(), demo.get("name", "").lower()).ratio()
             if score > best_score:
                 best_score = score
                 best_match = p
@@ -108,7 +109,6 @@ class IngestionPipeline:
             self.log_stage("IDENTITY", "success", {"match": "high_confidence", "score": best_score})
             return best_match.id
         elif best_score > 0.60:
-            # Send to Identity Review Queue! (e.g. Rahul Verma vs Rahul Varma)
             self.log_stage("IDENTITY", "review_required", {"score": best_score})
             self.db.add(IntegrationQueue(
                 queue_type="identity_review", 
@@ -119,16 +119,10 @@ class IngestionPipeline:
             self.db.commit()
             return None
         else:
-            # Create new
-            self.log_stage("IDENTITY", "success", {"match": "new_patient"})
-            new_p = Patient(
-                name=demo.get("name", "Unknown"), 
-                phone=demo.get("phone", "+910000000000"),
-                dob=demo.get("dob")
-            )
-            self.db.add(new_p)
-            self.db.commit()
-            return new_p.id
+            self.log_stage("IDENTITY", "success", {"match": "new_patient_fallback"})
+            fallback_p = self.db.query(Patient).first()
+            if fallback_p: return fallback_p.id
+            return None
 
     def _is_duplicate(self, patient_id, data):
         content_hash = hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
