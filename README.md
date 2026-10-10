@@ -119,3 +119,5 @@ flowchart TD
 
 ### Identity Trapping (Planted Edge Cases)
 The `Projector` generator intentionally splinters a Master Patient (e.g. Priya Sharma) into these 9 databases under distinct MRNs (e.g., `KAV-18415` vs `MD-227974`). The Ingestion Pipeline probabilistically regroups them. If a collision is ambiguous (e.g., "Rahul Verma" vs "Rahul Varma"), the system routes the record to the Link Review manual adjudication queue.
+
+# bitsandbytesmedtrail
