@@ -88,7 +88,7 @@ export default function DoctorHome() {
                   <tr 
                     key={i} 
                     className="hover:bg-slate-50 cursor-pointer group"
-                    onClick={() => router.push(`/hospital/patient/${apt.id}`)}
+                    onClick={() => router.push(`/hospital/patient/${apt.id}/consult`)}
                   >
                     <td className="px-6 py-4 font-medium text-slate-700 whitespace-nowrap">{apt.time}</td>
                     <td className="px-6 py-4">
