@@ -68,7 +68,7 @@ export default function LoginPage() {
         body: JSON.stringify({ hospital_id: hospitalId, email, password, otp: hospitalCode }),
       });
       setToken(res.access_token);
-      router.push("/shared/demo"); // Or wherever clinician workspace is
+      router.push("/hospital/dashboard"); // Or wherever clinician workspace is
     } catch (err: any) {
       setError(err.message);
     } finally {
