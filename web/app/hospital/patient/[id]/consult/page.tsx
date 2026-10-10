@@ -9,6 +9,7 @@ import {
 import { useRouter } from "next/navigation";
 import PrescriptionComposer from "@/components/PrescriptionComposer";
 import OrderComposer from "@/components/OrderComposer";
+import NoteEditor from "@/components/NoteEditor";
 
 export default function ConsultWorkspace({ params }: { params: { id: string } }) {
   const [data, setData] = useState<any>(null);
@@ -16,6 +17,7 @@ export default function ConsultWorkspace({ params }: { params: { id: string } })
   const [briefLoading, setBriefLoading] = useState(false);
   const [showRxComposer, setShowRxComposer] = useState(false);
   const [showOrderComposer, setShowOrderComposer] = useState(false);
+  const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [activeTab, setActiveTab] = useState("Brief");
   const router = useRouter();
 
@@ -294,7 +296,22 @@ export default function ConsultWorkspace({ params }: { params: { id: string } })
               </div>
             )}
 
-            {["Timeline", "Problems", "Notes & Visits"].includes(activeTab) && (
+            
+            {activeTab === "Notes & Visits" && (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                  <h3 className="font-bold text-slate-800">Clinical Notes</h3>
+                  <button onClick={() => setShowNoteEditor(true)} className="flex items-center gap-1 text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-100 transition">
+                    <FileText className="w-4 h-4" /> Add Note
+                  </button>
+                </div>
+                <div className="p-6 text-slate-500 text-center py-8">
+                  Unified notes and discharge summaries appear here.
+                </div>
+              </div>
+            )}
+
+            {["Timeline", "Problems"].includes(activeTab) && (
               <div className="flex flex-col items-center justify-center h-64 text-slate-400">
                 <FileText className="w-12 h-12 mb-4 opacity-50" />
                 <p>Content for {activeTab} is unified from {header.orgs_count} sources.</p>
@@ -383,6 +400,16 @@ export default function ConsultWorkspace({ params }: { params: { id: string } })
           patientId={params.id} 
           onClose={() => setShowOrderComposer(false)} 
           activeLabs={labs} 
+        />
+      )}
+
+      {/* NOTE EDITOR MODAL */}
+      {showNoteEditor && (
+        <NoteEditor 
+          patientId={params.id} 
+          onClose={() => setShowNoteEditor(false)} 
+          activeVitals={vitals}
+          activeMeds={medications}
         />
       )}
     </div>
