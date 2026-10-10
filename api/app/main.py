@@ -26,6 +26,8 @@ async def lifespan(_: FastAPI):
 
 
 from app.routers import auth_router, patient_router, record_router, timeline_router, connector_router, upload_router, share_router, audit_router, care_router
+from app.routers.v1.ingest import router as ingest_router
+from app.routers.v1.system import router as system_router
 
 app = FastAPI(
     title="MedTrail API",
@@ -36,6 +38,10 @@ app = FastAPI(
 
 app.include_router(auth_router.router)
 app.include_router(patient_router.router)
+
+app.include_router(ingest_router, prefix="/api/v1")
+app.include_router(system_router, prefix="/api/v1")
+
 app.include_router(record_router.router)
 app.include_router(timeline_router.router)
 app.include_router(connector_router.router)
