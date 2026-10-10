@@ -93,16 +93,16 @@ fetchAPI('/overview').then(setData).catch(err => {
                <div className="flex items-start justify-between p-3 rounded-xl border border-slate-100 bg-slate-50 cursor-pointer hover:bg-slate-100 transition">
                   <div>
                     <h4 className="font-semibold text-sm text-slate-800">Possible Medication Conflict</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">Lisinopril from UCSF and Losartan from City Clinic.</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Amlodipine from Kaveri Hospital and Telmisartan from Sanjeevani Clinic.</p>
                   </div>
                   <button onClick={() => { const act = prompt("Resolve conflict (keep / discontinued / ask_doctor):", "keep"); if(act) handleResolve("test-id", act); }} className="text-xs font-semibold text-emerald-600 px-3 py-1 bg-white border border-slate-200 rounded-md">Resolve</button>
                </div>
                <div className="flex items-start justify-between p-3 rounded-xl border border-slate-100 bg-slate-50 cursor-pointer hover:bg-slate-100 transition">
                   <div>
                     <h4 className="font-semibold text-sm text-slate-800">Missing Provider Record</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">Discharge summary from Valley Hospital ER missing.</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Discharge summary from Apollo Hospitals ER missing.</p>
                   </div>
-                  <button onClick={() => handleRequest("Valley Hospital ER")} className="text-xs font-semibold text-emerald-600 px-3 py-1 bg-white border border-slate-200 rounded-md">Request</button>
+                  <button onClick={() => handleRequest("Apollo Hospitals ER")} className="text-xs font-semibold text-emerald-600 px-3 py-1 bg-white border border-slate-200 rounded-md">Request</button>
                </div>
             </div>
           </div>
@@ -115,8 +115,8 @@ fetchAPI('/overview').then(setData).catch(err => {
             </div>
             <div className="space-y-6">
               {[
-                { icon: FileText, color: 'text-blue-600', bg: 'bg-blue-100', title: 'Lab results synced', desc: 'Complete Blood Count (CBC) from Quest Diagnostics', time: '2 hours ago' },
-                { icon: PlusCircle, color: 'text-emerald-600', bg: 'bg-emerald-100', title: 'New medication added', desc: 'Amoxicillin prescribed by Dr. Chen', time: 'Yesterday' },
+                { icon: FileText, color: 'text-blue-600', bg: 'bg-blue-100', title: 'Lab results synced', desc: 'Complete Blood Count (CBC) from Dr. Lal PathLabs', time: '2 hours ago' },
+                { icon: PlusCircle, color: 'text-emerald-600', bg: 'bg-emerald-100', title: 'New medication added', desc: 'Azithromycin prescribed by Dr. Gupta', time: 'Yesterday' },
                 { icon: History, color: 'text-slate-600', bg: 'bg-slate-100', title: 'Past visit record imported', desc: 'Orthopedics consult, 2023', time: 'Yesterday' }
               ].map((item, i) => (
                 <div key={i} className="flex gap-4">
@@ -168,9 +168,9 @@ fetchAPI('/overview').then(setData).catch(err => {
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
                 <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">UCSF</div>
+                  <div className="h-8 w-8 rounded bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">Kaveri Hospital</div>
                   <div className="flex flex-col">
-                    <span className="font-medium text-sm text-slate-700">UCSF Health</span>
+                    <span className="font-medium text-sm text-slate-700">Kaveri Hospital Health</span>
                     <span className="text-[10px] text-slate-400">Synced 2h ago</span>
                   </div>
                 </div>
@@ -178,9 +178,9 @@ fetchAPI('/overview').then(setData).catch(err => {
               </div>
               <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
                 <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-xs">CVS</div>
+                  <div className="h-8 w-8 rounded bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-xs">MedPlus</div>
                   <div className="flex flex-col">
-                    <span className="font-medium text-sm text-slate-700">CVS Pharmacy</span>
+                    <span className="font-medium text-sm text-slate-700">MedPlus Pharmacy</span>
                     <span className="text-[10px] text-slate-400">Synced 1d ago</span>
                   </div>
                 </div>
@@ -188,9 +188,9 @@ fetchAPI('/overview').then(setData).catch(err => {
               </div>
               <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
                 <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded bg-teal-100 flex items-center justify-center text-teal-600 font-bold text-xs">QD</div>
+                  <div className="h-8 w-8 rounded bg-teal-100 flex items-center justify-center text-teal-600 font-bold text-xs">Metro</div>
                   <div className="flex flex-col">
-                    <span className="font-medium text-sm text-slate-700">Quest Diagnostics</span>
+                    <span className="font-medium text-sm text-slate-700">Dr. Lal PathLabs</span>
                     <span className="text-[10px] text-slate-400">Synced 5d ago</span>
                   </div>
                 </div>

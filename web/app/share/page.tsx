@@ -111,8 +111,8 @@ export default function ShareAccess() {
             <div className="space-y-4">
                {[
                  { name: 'Dr. Sarah Chen', time: 'Today, 2:30 PM', scope: 'Full History' },
-                 { name: 'Valley Hospital ER', time: 'Oct 1, 2023', scope: 'Emergency Card' },
-                 { name: 'City Clinic Staff', time: 'Sep 15, 2023', scope: 'Meds & Allergies' }
+                 { name: 'Apollo Hospitals ER', time: 'Oct 1, 2023', scope: 'Emergency Card' },
+                 { name: 'Sanjeevani Clinic Staff', time: 'Sep 15, 2023', scope: 'Meds & Allergies' }
                ].map((log, i) => (
                  <div key={i} className="flex flex-col gap-1 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
                     <div className="font-semibold text-slate-800 text-sm">{log.name}</div>

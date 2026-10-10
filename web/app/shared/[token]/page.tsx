@@ -58,14 +58,14 @@ export default function ClinicianWorkspace({ params }: { params: { token: string
                           <div className="flex gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50">
                              <Pill className="h-5 w-5 text-slate-400 shrink-0" />
                              <div>
-                               <div className="font-semibold text-sm text-slate-800">Lisinopril 10mg</div>
+                               <div className="font-semibold text-sm text-slate-800">Amlodipine 10mg</div>
                                <div className="text-xs text-slate-500">Once daily</div>
                              </div>
                           </div>
                           <div className="flex gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50">
                              <Pill className="h-5 w-5 text-slate-400 shrink-0" />
                              <div>
-                               <div className="font-semibold text-sm text-slate-800">Metformin 500mg</div>
+                               <div className="font-semibold text-sm text-slate-800">Glycomet 500mg</div>
                                <div className="text-xs text-slate-500">Twice daily</div>
                              </div>
                           </div>
@@ -113,7 +113,7 @@ export default function ClinicianWorkspace({ params }: { params: { token: string
                     <div className="flex gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
                        <FlaskConical className="h-5 w-5 text-slate-600 shrink-0" />
                        <div>
-                         <h4 className="font-semibold text-slate-900 text-sm">New Labs Available: Quest Diagnostics</h4>
+                         <h4 className="font-semibold text-slate-900 text-sm">New Labs Available: Dr. Lal PathLabs</h4>
                          <p className="text-xs text-slate-600 mt-1">Lipid Panel completed.</p>
                          <div className="text-[10px] font-bold text-slate-500 uppercase mt-2">Oct 05, 2023</div>
                        </div>
@@ -164,7 +164,7 @@ export default function ClinicianWorkspace({ params }: { params: { token: string
                       </div>
                       {interactionCheck.toLowerCase().includes('ibuprofen') && (
                          <div className="mt-2 text-xs text-amber-600 font-medium bg-amber-50 p-2 rounded border border-amber-100 flex items-start gap-1.5">
-                           <AlertTriangle className="h-4 w-4 shrink-0" /> Warning: Potential interaction with active medication Lisinopril.
+                           <AlertTriangle className="h-4 w-4 shrink-0" /> Warning: Potential interaction with active medication Amlodipine.
                          </div>
                       )}
                     </div>

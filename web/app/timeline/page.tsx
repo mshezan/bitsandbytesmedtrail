@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { Pill, Activity, Stethoscope, ChevronLeft, ChevronRight, Search, FileText } from 'lucide-react';
 
 const mockTimelineData = [
-  { id: 1, date: '2023-10-15', type: 'visit', title: 'Annual Physical', provider: 'Dr. Chen', icon: Stethoscope, color: 'emerald' },
-  { id: 2, date: '2023-11-02', type: 'lab', title: 'Comprehensive Metabolic Panel', provider: 'Quest Diagnostics', icon: Activity, color: 'blue' },
-  { id: 3, date: '2024-01-20', type: 'medication', title: 'Started Lisinopril', provider: '10mg daily', icon: Pill, color: 'rose' },
+  { id: 1, date: '2023-10-15', type: 'visit', title: 'Annual Physical', provider: 'Dr. Sharma', icon: Stethoscope, color: 'emerald' },
+  { id: 2, date: '2023-11-02', type: 'lab', title: 'Comprehensive Metabolic Panel', provider: 'Dr. Lal PathLabs', icon: Activity, color: 'blue' },
+  { id: 3, date: '2024-01-20', type: 'medication', title: 'Started Amlodipine', provider: '10mg daily', icon: Pill, color: 'rose' },
   { id: 4, date: '2024-02-14', type: 'visit', title: 'Cardiology Consult', provider: 'Dr. Smith', icon: Stethoscope, color: 'emerald' },
-  { id: 5, date: '2024-03-01', type: 'document', title: 'Echocardiogram Results', provider: 'UCSF Medical Center', icon: FileText, color: 'amber' },
+  { id: 5, date: '2024-03-01', type: 'document', title: 'Echocardiogram Results', provider: 'Kaveri Hospital Medical Center', icon: FileText, color: 'amber' },
 ];
 
 const colorMap: Record<string, { bg: string, text: string, badgeBg: string, badgeText: string }> = {

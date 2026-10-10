@@ -6,8 +6,8 @@ import { Database, Plus, Search, Building2, FlaskConical, Stethoscope, ChevronRi
 const connectors = [
   { id: 'epic', name: 'Epic MyChart', type: 'Hospital', icon: Building2, status: 'Connected', lastSync: '2 hours ago' },
   { id: 'cerner', name: 'Cerner Health', type: 'Hospital', icon: Building2, status: 'Connected', lastSync: '1 day ago' },
-  { id: 'quest', name: 'Quest Diagnostics', type: 'Lab', icon: FlaskConical, status: 'Connected', lastSync: '5 days ago' },
-  { id: 'cvs', name: 'CVS Pharmacy', type: 'Pharmacy', icon: Plus, status: 'Not Connected', lastSync: null },
+  { id: 'quest', name: 'Metro Diagnostics', type: 'Lab', icon: FlaskConical, status: 'Connected', lastSync: '5 days ago' },
+  { id: 'cvs', name: 'MedPlus Pharmacy', type: 'Pharmacy', icon: Plus, status: 'Not Connected', lastSync: null },
 ];
 
 export default function ProviderConnect() {

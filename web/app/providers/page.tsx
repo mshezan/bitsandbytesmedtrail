@@ -3,9 +3,9 @@
 import { Stethoscope, Building2, AlertTriangle, Plus, Phone, MapPin, ExternalLink } from 'lucide-react';
 
 const mockProviders = [
-  { id: 1, name: 'Dr. Sarah Chen', type: 'Primary Care', facility: 'City Clinic', lastVisit: '2024-02-15', missing: true, phone: '(555) 123-4567' },
-  { id: 2, name: 'Dr. James Wilson', type: 'Cardiologist', facility: 'UCSF Health', lastVisit: '2023-11-20', missing: false, phone: '(555) 987-6543' },
-  { id: 3, name: 'Valley Hospital ER', type: 'Emergency Facility', facility: 'Valley Hospital', lastVisit: '2022-08-05', missing: true, phone: '(555) 555-0000' }
+  { id: 1, name: 'Dr. Sarah Chen', type: 'Primary Care', facility: 'Sanjeevani Clinic', lastVisit: '2024-02-15', missing: true, phone: '(555) 123-4567' },
+  { id: 2, name: 'Dr. James Wilson', type: 'Cardiologist', facility: 'Kaveri Multispeciality', lastVisit: '2023-11-20', missing: false, phone: '(555) 987-6543' },
+  { id: 3, name: 'Apollo Hospitals ER', type: 'Emergency Facility', facility: 'Apollo Hospitals', lastVisit: '2022-08-05', missing: true, phone: '(555) 555-0000' }
 ];
 
 export default function Providers() {

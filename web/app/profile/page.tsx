@@ -24,6 +24,9 @@ export default function Profile() {
              <>
                <div><label className="text-xs text-slate-500">Blood Group</label><div className="font-medium text-slate-800">{user.patient.blood_group}</div></div>
                <div><label className="text-xs text-slate-500">Emergency Contact</label><div className="font-medium text-slate-800">{user.patient.emergency}</div></div>
+               <div><label className="text-xs text-slate-500">ABHA Number</label><div className="font-medium text-slate-800">{user.patient.abha_number}</div></div>
+               <div><label className="text-xs text-slate-500">ABHA Address</label><div className="font-medium text-slate-800">{user.patient.abha_address}</div></div>
+               <div><label className="text-xs text-slate-500">Insurance</label><div className="font-medium text-slate-800">{user.patient.insurance}</div></div>
              </>
            )}
         </div>

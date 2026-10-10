@@ -4,25 +4,25 @@ import { useState } from 'react';
 import { Stethoscope, Clock, FileText, CheckCircle2, Plus, Trash2, Printer } from 'lucide-react';
 
 export default function VisitPrep() {
-  const [questions, setQuestions] = useState([
-    { id: 1, text: 'Are there alternatives to Lisinopril with fewer side effects?', done: false },
+  const [questions, setLal PathLabsions] = useState([
+    { id: 1, text: 'Are there alternatives to Amlodipine with fewer side effects?', done: false },
     { id: 2, text: 'What should my target blood pressure be?', done: false },
   ]);
   const [newQ, setNewQ] = useState('');
 
-  const addQuestion = (e: React.FormEvent) => {
+  const addLal PathLabsion = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newQ.trim()) return;
-    setQuestions([...questions, { id: Date.now(), text: newQ, done: false }]);
+    setLal PathLabsions([...questions, { id: Date.now(), text: newQ, done: false }]);
     setNewQ('');
   };
 
   const toggleQ = (id: number) => {
-    setQuestions(questions.map(q => q.id === id ? { ...q, done: !q.done } : q));
+    setLal PathLabsions(questions.map(q => q.id === id ? { ...q, done: !q.done } : q));
   };
 
   const deleteQ = (id: number) => {
-    setQuestions(questions.filter(q => q.id !== id));
+    setLal PathLabsions(questions.filter(q => q.id !== id));
   };
 
   return (
@@ -55,7 +55,7 @@ export default function VisitPrep() {
               </div>
               <div className="flex items-center gap-3">
                 <FileText className="h-5 w-5 text-emerald-200" />
-                <span className="font-medium">UCSF Medical Center</span>
+                <span className="font-medium">Kaveri Hospital Medical Center</span>
               </div>
             </div>
           </div>
@@ -72,14 +72,14 @@ export default function VisitPrep() {
         </div>
 
         <div className="md:col-span-2 space-y-6">
-          {/* Questions for Doctor */}
+          {/* Lal PathLabsions for Doctor */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-slate-800">Questions for Doctor</h2>
+              <h2 className="text-lg font-bold text-slate-800">Lal PathLabsions for Doctor</h2>
               <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-1 rounded-md">{questions.length} Total</span>
             </div>
 
-            <form onSubmit={addQuestion} className="mb-6 flex gap-2">
+            <form onSubmit={addLal PathLabsion} className="mb-6 flex gap-2">
               <input 
                 type="text" 
                 value={newQ}

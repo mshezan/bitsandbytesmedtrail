@@ -10,9 +10,9 @@ const mockLabs = [
     trend: 'up',
     abnormal: true,
     results: [
-      { date: '2024-03-01', value: 245, provider: 'Quest Diagnostics', isAbnormal: true },
-      { date: '2023-09-15', value: 230, provider: 'UCSF Lab', isAbnormal: true },
-      { date: '2022-10-10', value: 195, provider: 'City Clinic', isAbnormal: false },
+      { date: '2024-03-01', value: 245, provider: 'Dr. Lal PathLabs', isAbnormal: true },
+      { date: '2023-09-15', value: 230, provider: 'Metro Diagnostics', isAbnormal: true },
+      { date: '2022-10-10', value: 195, provider: 'Sanjeevani Clinic', isAbnormal: false },
     ]
   },
   { 
@@ -22,9 +22,9 @@ const mockLabs = [
     trend: 'down',
     abnormal: false,
     results: [
-      { date: '2024-03-01', value: 5.4, provider: 'Quest Diagnostics', isAbnormal: false },
-      { date: '2023-09-15', value: 5.8, provider: 'UCSF Lab', isAbnormal: false },
-      { date: '2022-10-10', value: 6.2, provider: 'City Clinic', isAbnormal: true },
+      { date: '2024-03-01', value: 5.4, provider: 'Dr. Lal PathLabs', isAbnormal: false },
+      { date: '2023-09-15', value: 5.8, provider: 'Metro Diagnostics', isAbnormal: false },
+      { date: '2022-10-10', value: 6.2, provider: 'Sanjeevani Clinic', isAbnormal: true },
     ]
   },
   { 
@@ -34,8 +34,8 @@ const mockLabs = [
     trend: 'flat',
     abnormal: false,
     results: [
-      { date: '2024-03-01', value: 2.1, provider: 'Quest Diagnostics', isAbnormal: false },
-      { date: '2023-09-15', value: 2.3, provider: 'UCSF Lab', isAbnormal: false },
+      { date: '2024-03-01', value: 2.1, provider: 'Dr. Lal PathLabs', isAbnormal: false },
+      { date: '2023-09-15', value: 2.3, provider: 'Metro Diagnostics', isAbnormal: false },
     ]
   }
 ];

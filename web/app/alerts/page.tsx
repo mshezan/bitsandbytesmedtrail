@@ -3,9 +3,9 @@
 import { Bell, AlertCircle, AlertTriangle, Info, CheckCircle2 } from 'lucide-react';
 
 const mockAlerts = [
-  { id: 1, type: 'critical', title: 'Medication Refill Needed', desc: 'Lisinopril 10mg runs out in 3 days.', time: '2 hours ago', icon: AlertCircle },
+  { id: 1, type: 'critical', title: 'Medication Refill Needed', desc: 'Amlodipine 10mg runs out in 3 days.', time: '2 hours ago', icon: AlertCircle },
   { id: 2, type: 'warning', title: 'Abnormal Lab Result', desc: 'Your recent LDL Cholesterol is slightly elevated (130 mg/dL).', time: 'Yesterday', icon: AlertTriangle },
-  { id: 3, type: 'info', title: 'Upcoming Appointment', desc: 'Follow-up with Dr. Chen tomorrow at 10:00 AM.', time: '2 days ago', icon: Info },
+  { id: 3, type: 'info', title: 'Upcoming Appointment', desc: 'Follow-up with Dr. Sharma tomorrow at 10:00 AM.', time: '2 days ago', icon: Info },
 ];
 
 export default function Alerts() {

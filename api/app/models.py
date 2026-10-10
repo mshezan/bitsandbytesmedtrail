@@ -64,6 +64,9 @@ class Patient(Base):
     sex: Mapped[str] = mapped_column(String(32), nullable=False)
     blood_group: Mapped[str | None] = mapped_column(String(8))
     emergency_contact: Mapped[str | None] = mapped_column(String(200))
+    abha_number: Mapped[str | None] = mapped_column(String(32))
+    abha_address: Mapped[str | None] = mapped_column(String(128))
+    insurance: Mapped[str | None] = mapped_column(String(128))
 
     user: Mapped[User] = relationship(back_populates="patient")
     records: Mapped[list["Record"]] = relationship(back_populates="patient")

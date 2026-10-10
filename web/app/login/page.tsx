@@ -6,7 +6,7 @@ import { fetchAPI, setToken } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [phone, setPhone] = useState("5550101");
+  const [phone, setPhone] = useState("+919876543210");
   const [step, setStep] = useState<"request" | "verify">("request");
   const [code, setCode] = useState("123456");
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +69,7 @@ export default function LoginPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:border-sage focus:ring-1 focus:ring-sage"
-              placeholder="e.g. 5550101"
+              placeholder="e.g. +919876543210"
               required
             />
           </label>

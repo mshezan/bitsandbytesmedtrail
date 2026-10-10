@@ -69,11 +69,11 @@ export default function EmergencyAccess({ params }: { params: { token: string } 
                </h2>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                  <div className="p-3 border border-slate-200 rounded-xl">
-                   <div className="font-bold text-slate-800">Lisinopril 10mg</div>
+                   <div className="font-bold text-slate-800">Amlodipine 10mg</div>
                    <div className="text-sm text-slate-500">Once daily</div>
                  </div>
                  <div className="p-3 border border-slate-200 rounded-xl">
-                   <div className="font-bold text-slate-800">Metformin 500mg</div>
+                   <div className="font-bold text-slate-800">Glycomet 500mg</div>
                    <div className="text-sm text-slate-500">Twice daily</div>
                  </div>
                  <div className="p-3 border border-slate-200 rounded-xl">
