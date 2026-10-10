@@ -61,7 +61,7 @@ fetchAPI('/overview').then(setData).catch(err => {
           <p className="text-emerald-100 max-w-2xl text-sm leading-relaxed mb-4">
             Your medical records are fragmented across multiple providers. We unify them to ensure your next clinician has the complete picture, preventing duplicate tests and medication conflicts.
           </p>
-          <button onClick={() => router.push("/handover")} className="bg-white text-emerald-800 px-4 py-2 rounded-lg font-medium text-sm hover:bg-emerald-50 transition shadow-sm">
+          <button onClick={() => router.push("/patient/handover")} className="bg-white text-emerald-800 px-4 py-2 rounded-lg font-medium text-sm hover:bg-emerald-50 transition shadow-sm">
             Generate Handover Packet
           </button>
         </div>
@@ -111,7 +111,7 @@ fetchAPI('/overview').then(setData).catch(err => {
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-slate-800">Recent Additions</h2>
-              <button onClick={() => router.push("/timeline")} className="text-emerald-600 text-sm font-medium hover:text-emerald-700">View timeline</button>
+              <button onClick={() => router.push("/patient/timeline")} className="text-emerald-600 text-sm font-medium hover:text-emerald-700">View timeline</button>
             </div>
             <div className="space-y-6">
               {[
@@ -163,7 +163,7 @@ fetchAPI('/overview').then(setData).catch(err => {
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-slate-800">Sources</h2>
-              <button onClick={() => router.push("/connect")} className="text-slate-400 hover:text-emerald-600"><PlusCircle className="h-5 w-5" /></button>
+              <button onClick={() => router.push("/patient/connect")} className="text-slate-400 hover:text-emerald-600"><PlusCircle className="h-5 w-5" /></button>
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
@@ -196,7 +196,7 @@ fetchAPI('/overview').then(setData).catch(err => {
                 </div>
                 <span className="flex h-2 w-2 rounded-full bg-emerald-500"></span>
               </div>
-              <button onClick={() => router.push("/connect")} className="w-full py-2 mt-2 flex items-center justify-center text-sm font-medium text-emerald-600 hover:bg-emerald-50 rounded-lg transition border border-emerald-100">
+              <button onClick={() => router.push("/patient/connect")} className="w-full py-2 mt-2 flex items-center justify-center text-sm font-medium text-emerald-600 hover:bg-emerald-50 rounded-lg transition border border-emerald-100">
                 <Link2 className="h-4 w-4 mr-2" />
                 Connect New Source
               </button>
@@ -209,7 +209,7 @@ fetchAPI('/overview').then(setData).catch(err => {
                <div>
                   <h3 className="font-semibold text-emerald-800 text-sm">Emergency Card Ready</h3>
                   <p className="text-xs text-emerald-700 mt-1 mb-3">Your vital information is configured for emergency access.</p>
-                  <button onClick={() => router.push("/emergency")} className="text-xs font-bold bg-emerald-600 text-white px-3 py-1.5 rounded-md hover:bg-emerald-700">View Card</button>
+                  <button onClick={() => router.push("/patient/emergency")} className="text-xs font-bold bg-emerald-600 text-white px-3 py-1.5 rounded-md hover:bg-emerald-700">View Card</button>
                </div>
              </div>
           </div>

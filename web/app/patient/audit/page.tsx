@@ -28,7 +28,7 @@ export default function AuditLogPage() {
     <main className="mx-auto max-w-3xl px-6 py-10">
       <header className="mb-10 flex items-center gap-4">
         <button
-          onClick={() => router.push("/share")}
+          onClick={() => router.push("/patient/share")}
           className="rounded-full bg-neutral-100 p-2 text-neutral-500 hover:bg-neutral-200"
         >
           &larr; Back

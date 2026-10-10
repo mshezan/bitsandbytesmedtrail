@@ -9,6 +9,6 @@ test('App loads and backend responds', async ({ page, request }) => {
   await page.goto('http://localhost:3000/login');
   await expect(page).toHaveTitle(/MedTrail/);
   
-  await page.goto('http://localhost:3000/home');
+  await page.goto('http://localhost:3000/patient/home');
   await expect(page).toHaveTitle(/MedTrail/);
 });

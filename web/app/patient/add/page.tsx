@@ -44,7 +44,7 @@ export default function AddRecordsPage() {
     try {
       const res = await fetchAPI(`/connectors/${id}/sync`, { method: "POST" });
       alert(`Sync successful! Imported ${res.imported_count} records.`);
-      router.push("/timeline");
+      router.push("/patient/timeline");
     } catch (err: any) {
       alert("Error: " + err.message);
     } finally {

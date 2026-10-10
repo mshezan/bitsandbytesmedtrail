@@ -13,7 +13,7 @@ export default function EmergencyQRPage() {
   async function handleGenerate() {
     setLoading(true);
     try {
-      const res = await fetchAPI("/emergency", { method: "POST" });
+      const res = await fetchAPI("/patient/emergency", { method: "POST" });
       setUrl(res.url);
     } catch (err: any) {
       alert(err.message);
@@ -25,7 +25,7 @@ export default function EmergencyQRPage() {
   return (
     <main className="mx-auto max-w-md px-6 py-12 text-center">
       <header className="mb-10 flex items-center justify-between">
-        <button onClick={() => router.push("/home")} className="rounded-full bg-neutral-100 p-2 text-neutral-500 hover:bg-neutral-200">
+        <button onClick={() => router.push("/patient/home")} className="rounded-full bg-neutral-100 p-2 text-neutral-500 hover:bg-neutral-200">
           &larr; Back
         </button>
       </header>

@@ -60,7 +60,7 @@ export default function ConfirmPage() {
     <main className="mx-auto max-w-3xl px-6 py-10">
       <header className="mb-10 flex items-center gap-4">
         <button
-          onClick={() => router.push("/timeline")}
+          onClick={() => router.push("/patient/timeline")}
           className="rounded-full bg-neutral-100 p-2 text-neutral-500 hover:bg-neutral-200"
         >
           &larr; Back
@@ -77,7 +77,7 @@ export default function ConfirmPage() {
           <h2 className="text-xl font-semibold">All Caught Up!</h2>
           <p className="text-neutral-500">No unverified records to review.</p>
           <button 
-            onClick={() => router.push("/timeline")}
+            onClick={() => router.push("/patient/timeline")}
             className="mt-6 rounded-xl bg-sage px-6 py-3 font-medium text-white hover:bg-sage/90"
           >
             Go to Timeline

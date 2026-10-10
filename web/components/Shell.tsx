@@ -8,16 +8,16 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { name: 'Overview', href: '/home', icon: Home },
-  { name: 'Timeline', href: '/timeline', icon: Clock },
+  { name: 'Overview', href: '/patient/home', icon: Home },
+  { name: 'Timeline', href: '/patient/timeline', icon: Clock },
   { name: 'Records', href: '/records', icon: FileText },
-  { name: 'Medications', href: '/medications', icon: Pill },
-  { name: 'Labs', href: '/labs', icon: FlaskConical },
-  { name: 'Providers', href: '/providers', icon: Stethoscope },
+  { name: 'Medications', href: '/patient/medications', icon: Pill },
+  { name: 'Labs', href: '/patient/labs', icon: FlaskConical },
+  { name: 'Providers', href: '/patient/providers', icon: Stethoscope },
   { name: 'Insights', href: '/insights', icon: Lightbulb },
-  { name: 'Share & Access', href: '/share', icon: Share2 },
-  { name: 'Emergency Card', href: '/emergency', icon: ShieldAlert },
-  { name: 'Handover', href: '/handover', icon: Send },
+  { name: 'Share & Access', href: '/patient/share', icon: Share2 },
+  { name: 'Emergency Card', href: '/patient/emergency', icon: ShieldAlert },
+  { name: 'Handover', href: '/patient/handover', icon: Send },
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -128,9 +128,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
                        <div className="font-semibold text-slate-800 text-sm truncate">{user ? user.name : 'Sarah Jones'}</div>
                        <div className="text-xs text-slate-500 capitalize">{user ? user.role : 'Patient'}</div>
                     </div>
-                    <Link href="/profile" className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-emerald-600">My profile</Link>
-                    <Link href="/share" className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-emerald-600">Sharing & access</Link>
-                    <Link href="/emergency" className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-emerald-600">Emergency card</Link>
+                    <Link href="/patient/profile" className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-emerald-600">My profile</Link>
+                    <Link href="/patient/share" className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-emerald-600">Sharing & access</Link>
+                    <Link href="/patient/emergency" className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-emerald-600">Emergency card</Link>
                     <button onClick={handleSignOut} className="w-full text-left block px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 border-t border-slate-50 mt-1">Sign out</button>
                   </div>
                   </>
@@ -189,10 +189,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </div>
             <div className="p-2 max-h-64 overflow-y-auto">
                <div className="px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Actions</div>
-               <button onClick={() => { router.push('/handover'); setCmdOpen(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-sm font-medium text-slate-700 flex items-center gap-3">
+               <button onClick={() => { router.push('/patient/handover'); setCmdOpen(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-sm font-medium text-slate-700 flex items-center gap-3">
                  <Send className="h-4 w-4 text-emerald-600" /> Generate Handover Packet
                </button>
-               <button onClick={() => { router.push('/connect'); setCmdOpen(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-sm font-medium text-slate-700 flex items-center gap-3">
+               <button onClick={() => { router.push('/patient/connect'); setCmdOpen(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-sm font-medium text-slate-700 flex items-center gap-3">
                  <PlusCircle className="h-4 w-4 text-blue-600" /> Connect New Source
                </button>
             </div>

@@ -50,7 +50,7 @@ export default function LoginPage() {
         body: JSON.stringify({ phone, code }),
       });
       setToken(res.access_token);
-      router.push("/home");
+      router.push("/patient/home");
     } catch (err: any) {
       setError(err.message);
     } finally {

@@ -15,7 +15,7 @@ export default function HospitalLayout({ children }: { children: React.ReactNode
     fetchAPI('/me').then(res => {
       if (res && res.user) {
         if (res.user.role !== 'hospital_staff') {
-          router.push('/home');
+          router.push('/patient/home');
         } else {
           setUser(res.user);
         }

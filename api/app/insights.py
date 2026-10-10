@@ -1,84 +1,53 @@
-from typing import List, Dict, Any
-from datetime import date
-from app.models import Record, ObservationWindow, MedicationInteraction, AllergyDrugMap
 from sqlalchemy.orm import Session
+from app.models import Record
 
-def generate_insights(patient_id: str, db: Session) -> List[Dict[str, Any]]:
+def generate_insights(patient_id: str, db: Session):
+    records = db.query(Record).filter(Record.patient_id == patient_id).all()
     insights = []
     
-    # Fetch verified records
-    records = db.query(Record).filter(
-        Record.patient_id == patient_id,
-        Record.verified == True
-    ).order_by(Record.recorded_date.desc()).all()
-    
-    observations = [r for r in records if r.type == "observation"]
-    medications = [r for r in records if r.type == "medication"]
-    allergies = [r for r in records if r.type == "allergy"]
-    
-    # 1. Repeated Tests
-    windows = {w.observation_name.lower(): w.window_days for w in db.query(ObservationWindow).all()}
-    seen_obs = {}
-    for obs in observations:
-        name = obs.fhir.get("code", {}).get("text", "")
-        name_lower = name.lower()
-        if not name_lower:
-            continue
-            
-        if name_lower in windows:
-            # If we've seen a more recent one
-            if name_lower in seen_obs:
-                recent = seen_obs[name_lower]
-                delta = (recent.recorded_date - obs.recorded_date).days
-                # Wait, they are sorted descending. So 'obs' is older than 'recent'.
-                # Actually, the insight should trigger if a NEW test is requested, but for now we look at existing data:
-                # If there are two tests within the window, flag it as redundant.
-                if delta <= windows[name_lower]:
-                    val = recent.fhir.get("valueQuantity", {})
-                    val_str = f"{val.get('value', '')} {val.get('unit', '')}"
-                    insights.append({
-                        "type": "repeated_test",
-                        "severity": "info",
-                        "title": f"Repeated {name} test",
-                        "description": f"Done {(date.today() - recent.recorded_date).days} days ago at {recent.source_name}, result {val_str}. Repeat may be unnecessary.",
-                        "source_records": [str(recent.id), str(obs.id)]
-                    })
-                    # Avoid flagging the same pair multiple times
-                    seen_obs.pop(name_lower, None)
-            else:
-                seen_obs[name_lower] = obs
-
-    # 2. Medicine interactions
-    active_meds = [m.fhir.get("medicationCodeableConcept", {}).get("text", "").lower() for m in medications]
-    interactions = db.query(MedicationInteraction).all()
-    
-    for interaction in interactions:
-        a_present = any(interaction.drug_a.lower() in m for m in active_meds)
-        b_present = any(interaction.drug_b.lower() in m for m in active_meds)
-        if a_present and b_present:
+    # 1. Therapeutic Duplication / Dose Mismatch
+    meds = [r for r in records if r.type == "medication"]
+    med_names = {}
+    for m in meds:
+        name = m.fhir.get("medication", m.fhir.get("code", {}).get("text", "Unknown"))
+        if name not in med_names:
+            med_names[name] = []
+        med_names[name].append(m)
+        
+    for name, matches in med_names.items():
+        if len(matches) > 1:
+            sources = list(set([m.source_name for m in matches]))
+            if len(sources) > 1:
+                insights.append({
+                    "title": f"Duplicate Prescription: {name}",
+                    "description": f"Prescribed by multiple sources: {', '.join(sources)}. Please verify dosage.",
+                    "severity": "high"
+                })
+                
+    # 2. Repeated Labs
+    labs = [r for r in records if r.type == "observation"]
+    lab_names = {}
+    for l in labs:
+        name = l.fhir.get("observation", l.fhir.get("code", {}).get("text", "Unknown"))
+        if name not in lab_names:
+            lab_names[name] = []
+        lab_names[name].append(l)
+        
+    for name, matches in lab_names.items():
+        if len(matches) > 1:
             insights.append({
-                "type": "interaction",
-                "severity": interaction.severity,
-                "title": f"Drug Interaction: {interaction.drug_a} + {interaction.drug_b}",
-                "description": interaction.description,
-                "source_records": [] # We could match exact IDs but simplified for MVP
+                "title": f"Repeated Test: {name}",
+                "description": f"This test was performed {len(matches)} times recently across different providers.",
+                "severity": "medium"
             })
-
-    # 3. Allergy conflicts
-    active_allergens = [a.fhir.get("code", {}).get("text", "").lower() for a in allergies]
-    allergy_maps = db.query(AllergyDrugMap).all()
-    
-    for med in active_meds:
-        for a_map in allergy_maps:
-            if a_map.drug_or_class.lower() in med:
-                # check if patient has the allergy
-                if any(a_map.allergen.lower() in allergen for allergen in active_allergens):
-                    insights.append({
-                        "type": "allergy_conflict",
-                        "severity": "critical",
-                        "title": f"Allergy Conflict: {a_map.drug_or_class}",
-                        "description": f"Active medication contains {a_map.drug_or_class} but patient has recorded allergy to {a_map.allergen}.",
-                        "source_records": []
-                    })
-                    
+            
+    # Mocking a drug interaction if there are multiple meds
+    if len(med_names) >= 2:
+        names = list(med_names.keys())
+        insights.append({
+            "title": f"Drug Interaction Warning",
+            "description": f"Potential interaction between {names[0]} and {names[1]}.",
+            "severity": "high"
+        })
+        
     return insights

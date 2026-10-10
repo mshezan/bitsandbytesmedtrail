@@ -81,4 +81,5 @@ from app.insights import generate_insights
 
 @router.get("/insights")
 def get_insights(patient: CurrentPatient, db: SessionDep):
+    from app.insights import generate_insights
     return generate_insights(patient.id, db)
