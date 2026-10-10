@@ -12,6 +12,8 @@ const nav = [
     { name: "Dashboard", href: "/hospital/home", icon: LayoutDashboard },
     { name: "Patient Search", href: "/hospital/search", icon: Search },
     { name: "Inbox & Orders", href: "/hospital/inbox", icon: Bell },
+    { name: "ER Triage", href: "/hospital/er", icon: Activity },
+    { name: "Inpatients", href: "/hospital/inpatients", icon: UserPlus },
     { name: "Access History", href: "/hospital/access", icon: History },
     { name: "Integrations", href: "/hospital/settings", icon: Settings },
   ];

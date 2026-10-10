@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import PrescriptionComposer from "@/components/PrescriptionComposer";
 import OrderComposer from "@/components/OrderComposer";
 import NoteEditor from "@/components/NoteEditor";
+import ReferralComposer from "@/components/ReferralComposer";
 
 export default function ConsultWorkspace({ params }: { params: { id: string } }) {
   const [data, setData] = useState<any>(null);
@@ -18,6 +19,7 @@ export default function ConsultWorkspace({ params }: { params: { id: string } })
   const [showRxComposer, setShowRxComposer] = useState(false);
   const [showOrderComposer, setShowOrderComposer] = useState(false);
   const [showNoteEditor, setShowNoteEditor] = useState(false);
+  const [showReferralComposer, setShowReferralComposer] = useState(false);
   const [activeTab, setActiveTab] = useState("Brief");
   const router = useRouter();
 
@@ -354,6 +356,14 @@ export default function ConsultWorkspace({ params }: { params: { id: string } })
               </div>
             </div>
 
+            
+            <div>
+              <label className="text-xs font-bold text-slate-700 uppercase mb-2 block">Quick Actions</label>
+              <div className="flex gap-2">
+                <button onClick={() => setShowReferralComposer(true)} className="px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded text-xs font-semibold hover:bg-indigo-100">Refer Patient</button>
+              </div>
+            </div>
+
             <div>
               <label className="text-xs font-bold text-slate-700 uppercase mb-2 block">Before you prescribe</label>
               <div className="relative">
@@ -410,6 +420,14 @@ export default function ConsultWorkspace({ params }: { params: { id: string } })
           onClose={() => setShowNoteEditor(false)} 
           activeVitals={vitals}
           activeMeds={medications}
+        />
+      )}
+
+      {/* REFERRAL COMPOSER MODAL */}
+      {showReferralComposer && (
+        <ReferralComposer 
+          patientId={params.id} 
+          onClose={() => setShowReferralComposer(false)} 
         />
       )}
     </div>
