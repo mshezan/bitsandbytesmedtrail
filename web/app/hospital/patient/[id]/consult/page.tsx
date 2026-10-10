@@ -8,12 +8,14 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import PrescriptionComposer from "@/components/PrescriptionComposer";
+import OrderComposer from "@/components/OrderComposer";
 
 export default function ConsultWorkspace({ params }: { params: { id: string } }) {
   const [data, setData] = useState<any>(null);
   const [brief, setBrief] = useState<any>(null);
   const [briefLoading, setBriefLoading] = useState(false);
   const [showRxComposer, setShowRxComposer] = useState(false);
+  const [showOrderComposer, setShowOrderComposer] = useState(false);
   const [activeTab, setActiveTab] = useState("Brief");
   const router = useRouter();
 
@@ -263,7 +265,36 @@ export default function ConsultWorkspace({ params }: { params: { id: string } })
             )}
 
             {/* Stub for other tabs */}
-            {["Timeline", "Problems", "Labs", "Notes & Visits"].includes(activeTab) && (
+            
+            {activeTab === "Labs" && (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                  <h3 className="font-bold text-slate-800">Unified Lab Results</h3>
+                  <button onClick={() => setShowOrderComposer(true)} className="flex items-center gap-1 text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-100 transition">
+                    <FilePlus className="w-4 h-4" /> Add Order
+                  </button>
+                </div>
+                <div className="p-6">
+                  {labs.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      {labs.map((l:any, i:number) => (
+                        <div key={i} className="p-4 rounded-xl border border-slate-200 flex justify-between items-center">
+                          <div>
+                            <div className="font-bold text-slate-800">{l.name}</div>
+                            <div className="text-xs text-slate-500">{l.date}</div>
+                          </div>
+                          <div className="font-bold text-lg">{l.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-slate-500 text-center py-8">No recent labs on record.</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {["Timeline", "Problems", "Notes & Visits"].includes(activeTab) && (
               <div className="flex flex-col items-center justify-center h-64 text-slate-400">
                 <FileText className="w-12 h-12 mb-4 opacity-50" />
                 <p>Content for {activeTab} is unified from {header.orgs_count} sources.</p>
@@ -343,6 +374,15 @@ export default function ConsultWorkspace({ params }: { params: { id: string } })
           activeConditions={conditions} 
           activeAllergies={allergies} 
           activeMeds={medications}
+        />
+      )}
+
+      {/* ORDER COMPOSER MODAL */}
+      {showOrderComposer && (
+        <OrderComposer 
+          patientId={params.id} 
+          onClose={() => setShowOrderComposer(false)} 
+          activeLabs={labs} 
         />
       )}
     </div>

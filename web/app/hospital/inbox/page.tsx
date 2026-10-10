@@ -1,6 +1,178 @@
-'use client';
-import { useEffect, useState } from 'react';
-import { fetchAPI } from '@/lib/api';
-import Link from 'next/link';
-type RequestRow={id:string;patient_id:string;patient_name:string;type:string;record_id?:string;record?:string;field:string;believed_correct:string;reason:string;status:string;created_at:string};
-export default function HospitalInbox(){const [rows,setRows]=useState<RequestRow[]>([]);const [error,setError]=useState('');const [busy,setBusy]=useState<string|null>(null);async function load(){setRows(await fetchAPI('/hospital/inbox/corrections'));}useEffect(()=>{load().catch(e=>setError(e.message));},[]);async function review(row:RequestRow,action:string){const resolution=window.prompt(action==='under_review'?'Optional review note':'Required resolution reason');if(resolution===null)return;if(action!=='under_review'&&!resolution.trim()){setError('Provide a resolution reason.');return;}setBusy(row.id);setError('');try{await fetchAPI(`/hospital/inbox/corrections/${row.id}/review`,{method:'POST',body:JSON.stringify({action,reason:resolution||'Under review'})});await load();}catch(e:any){setError(e.message);}finally{setBusy(null);}}return <div className="space-y-6"><header><p className="text-sm font-semibold uppercase tracking-wider text-emerald-700">Organization inbox</p><h1 className="mt-1 text-3xl font-bold">Correction requests</h1><p className="mt-2 text-slate-600">Requests for records issued by your organization. Identity corrections require an organization administrator.</p></header>{error&&<p role="alert" className="rounded-xl bg-rose-50 p-3 text-rose-800">{error}</p>}<div className="space-y-3">{rows.length?rows.map(r=><article key={r.id} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap justify-between gap-2"><div><span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold capitalize">{r.status.replace('_',' ')} · {r.type}</span><h2 className="mt-3 text-lg font-semibold">{r.patient_name} · {r.record||'Identity record'}</h2><p className="text-sm text-slate-500">Field: {r.field} · Submitted {new Date(r.created_at).toLocaleString()}</p></div>{r.record_id&&<Link href={`/hospital/patient/${r.patient_id}`} className="text-sm font-semibold text-emerald-800 underline">Open chart</Link>}</div><div className="grid gap-3 rounded-xl bg-slate-50 p-4 sm:grid-cols-2"><p className="text-sm"><strong>Patient believes it should be:</strong><br/>{r.believed_correct}</p><p className="text-sm"><strong>Reason:</strong><br/>{r.reason}</p></div>{['open','under_review'].includes(r.status)&&<div className="flex flex-wrap gap-2"><button disabled={busy===r.id} onClick={()=>review(r,'under_review')} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">Mark under review</button><button disabled={busy===r.id} onClick={()=>review(r,'accepted')} className="rounded-lg bg-emerald-800 px-3 py-2 text-sm font-semibold text-white">Accept and amend</button><button disabled={busy===r.id} onClick={()=>review(r,'rejected')} className="rounded-lg border border-rose-200 px-3 py-2 text-sm text-rose-700">Reject</button></div>}{r.status!=='open'&&r.status!=='under_review'&&<p className="text-sm text-slate-600">Resolution: {r.status}</p>}</article>):<p className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-600">No correction requests for your organization.</p>}</div></div>}
+"use client";
+
+import { useEffect, useState } from "react";
+import { fetchAPI } from "@/lib/api";
+import { AlertTriangle, CheckCircle, Clock, FileText, Bell, Search, Activity, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+
+export default function InboxPage() {
+  const [data, setData] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("results");
+  const router = useRouter();
+
+  const loadData = () => {
+    fetchAPI('/hospital/inbox').then(setData).catch(console.error);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleAcknowledge = async (id: str) => {
+    try {
+      await fetchAPI(`/hospital/inbox/${id}/acknowledge`, { method: "POST" });
+      // update local state
+      setData((prev:any) => ({
+        ...prev,
+        results: prev.results.map((r:any) => r.id === id ? { ...r, acknowledged: true } : r)
+      }));
+    } catch (e) {
+      alert("Failed to acknowledge");
+    }
+  };
+
+  if (!data) return <div className="p-8 text-slate-500 animate-pulse">Loading Inbox...</div>;
+
+  return (
+    <div className="flex flex-col h-screen">
+      <header className="px-8 py-6 border-b border-slate-200 bg-white shrink-0">
+        <h1 className="text-3xl font-bold text-slate-900">Inbox & Orders</h1>
+        <p className="text-slate-500 mt-2">Manage incoming results, orders, and clinical tasks.</p>
+      </header>
+
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar Nav */}
+        <div className="w-64 border-r border-slate-200 bg-slate-50 p-4 shrink-0">
+          <button 
+            onClick={() => setActiveTab('results')}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold mb-2 transition ${activeTab === 'results' ? 'bg-white shadow-sm border border-slate-200 text-slate-900' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            <span className="flex items-center gap-2"><Bell className="w-4 h-4"/> Results Inbox</span>
+            {data.results.filter((r:any) => !r.acknowledged).length > 0 && (
+              <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs">{data.results.filter((r:any) => !r.acknowledged).length}</span>
+            )}
+          </button>
+          
+          <button 
+            onClick={() => setActiveTab('orders')}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition ${activeTab === 'orders' ? 'bg-white shadow-sm border border-slate-200 text-slate-900' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            <span className="flex items-center gap-2"><FileText className="w-4 h-4"/> My Orders</span>
+          </button>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-8 bg-white">
+          {activeTab === 'results' && (
+            <div className="max-w-5xl space-y-4">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-slate-800">Critical & Abnormal Results</h2>
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                  <input type="text" placeholder="Filter results..." className="pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:border-blue-500 outline-none" />
+                </div>
+              </div>
+
+              {data.results.map((r: any) => (
+                <div key={r.id} className={`p-5 rounded-2xl border transition shadow-sm flex items-start gap-4 ${r.acknowledged ? 'bg-slate-50 border-slate-200 opacity-60' : r.flag === 'critical' ? 'bg-red-50/50 border-red-200' : 'bg-amber-50/50 border-amber-200'}`}>
+                  <div className={`mt-1 p-2 rounded-full ${r.flag === 'critical' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+                    {r.flag === 'critical' ? <AlertTriangle className="w-5 h-5"/> : <Activity className="w-5 h-5"/>}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                          {r.patient_name} 
+                          <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${r.flag === 'critical' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {r.flag}
+                          </span>
+                        </h3>
+                        <p className="text-sm text-slate-500">Test: <strong>{r.test}</strong> • {r.date}</p>
+                      </div>
+                      {!r.acknowledged && (
+                        <button onClick={() => handleAcknowledge(r.id)} className="px-4 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 shadow-sm transition">
+                          Acknowledge
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-8 p-4 bg-white rounded-xl border border-slate-100 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+                      <div>
+                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Current Result</div>
+                        <div className={`text-xl font-bold ${r.flag === 'critical' ? 'text-red-600' : 'text-amber-600'}`}>{r.value}</div>
+                      </div>
+                      <div className="h-8 w-px bg-slate-200"></div>
+                      <div>
+                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Previous</div>
+                        <div className="text-lg font-bold text-slate-700">{r.previous_value || 'N/A'}</div>
+                      </div>
+                    </div>
+
+                    {!r.acknowledged && (
+                      <div className="mt-4 flex gap-2">
+                        <button className="px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-semibold text-slate-600 hover:bg-slate-50">Add Comment</button>
+                        <button className="px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-semibold text-slate-600 hover:bg-slate-50">Order Follow-up</button>
+                        <button className="px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-semibold text-slate-600 hover:bg-slate-50">Notify Patient</button>
+                        <button onClick={() => router.push(`/hospital/patient/${r.patient_id}/consult`)} className="px-3 py-1.5 bg-slate-800 text-white rounded text-xs font-semibold hover:bg-slate-900 ml-auto">
+                          Open Chart &rarr;
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeTab === 'orders' && (
+            <div className="max-w-5xl">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-slate-800">Order Management</h2>
+                <div className="flex gap-2">
+                  <select className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white outline-none">
+                    <option>All Statuses</option><option>Pending</option><option>Completed</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500">
+                    <tr>
+                      <th className="px-6 py-3 font-semibold">Order ID</th>
+                      <th className="px-6 py-3 font-semibold">Patient</th>
+                      <th className="px-6 py-3 font-semibold">Test / Procedure</th>
+                      <th className="px-6 py-3 font-semibold">Status</th>
+                      <th className="px-6 py-3 font-semibold">Priority</th>
+                      <th className="px-6 py-3 font-semibold text-right">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {data.orders.map((o:any) => (
+                      <tr key={o.id} className="hover:bg-slate-50">
+                        <td className="px-6 py-4 font-mono text-slate-500">{o.id}</td>
+                        <td className="px-6 py-4 font-bold text-slate-900">{o.patient_name}</td>
+                        <td className="px-6 py-4 text-slate-700">{o.test}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${o.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {o.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2.5 py-1 rounded border text-xs font-semibold ${o.priority === 'urgent' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                            {o.priority}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-slate-500 text-right">{o.date}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

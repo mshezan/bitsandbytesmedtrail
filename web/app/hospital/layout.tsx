@@ -9,11 +9,12 @@ import {
 } from "lucide-react";
 
 const nav = [
-  { name: "Overview", href: "/hospital/home", icon: LayoutDashboard },
-  { name: "Patient search", href: "/hospital/search", icon: Search },
-  { name: "Correction inbox", href: "/hospital/inbox", icon: Inbox },
-  { name: "Integrations", href: "/hospital/settings", icon: Settings },
-];
+    { name: "Dashboard", href: "/hospital/home", icon: LayoutDashboard },
+    { name: "Patient Search", href: "/hospital/search", icon: Search },
+    { name: "Inbox & Orders", href: "/hospital/inbox", icon: Bell },
+    { name: "Access History", href: "/hospital/access", icon: History },
+    { name: "Integrations", href: "/hospital/settings", icon: Settings },
+  ];
 
 export default function HospitalLayout({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
