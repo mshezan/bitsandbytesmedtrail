@@ -77,6 +77,106 @@ services:
       - ./web:/app
       - web_node_modules:/app/node_modules
 
+
+  mock-kaveri:
+    build: ./mock_systems
+    container_name: mock-kaveri
+    environment:
+      - SYSTEM_TYPE=fhir
+      - ORG_NAME=Kaveri Multispeciality
+    ports:
+      - "8001:80"
+    volumes:
+      - ./mock_data/mock-kaveri:/data
+
+  mock-sunrise:
+    build: ./mock_systems
+    container_name: mock-sunrise
+    environment:
+      - SYSTEM_TYPE=hl7
+      - ORG_NAME=Sunrise Heart
+    ports:
+      - "8002:80"
+    volumes:
+      - ./mock_data/mock-sunrise:/data
+
+  mock-metro:
+    build: ./mock_systems
+    container_name: mock-metro
+    environment:
+      - SYSTEM_TYPE=csv
+      - ORG_NAME=Metro Diagnostics
+    ports:
+      - "8003:80"
+    volumes:
+      - ./mock_data/mock-metro:/data
+
+  mock-sanjeevani:
+    build: ./mock_systems
+    container_name: mock-sanjeevani
+    environment:
+      - SYSTEM_TYPE=folder
+      - ORG_NAME=Sanjeevani Clinic
+    ports:
+      - "8004:80"
+    volumes:
+      - ./mock_data/mock-sanjeevani:/data
+
+  mock-carefirst:
+    build: ./mock_systems
+    container_name: mock-carefirst
+    environment:
+      - SYSTEM_TYPE=json
+      - ORG_NAME=CareFirst Pharmacy
+    ports:
+      - "8005:80"
+    volumes:
+      - ./mock_data/mock-carefirst:/data
+
+  mock-lotus:
+    build: ./mock_systems
+    container_name: mock-lotus
+    environment:
+      - SYSTEM_TYPE=fhir
+      - ORG_NAME=Lotus Women
+    ports:
+      - "8006:80"
+    volumes:
+      - ./mock_data/mock-lotus:/data
+
+  mock-bharat:
+    build: ./mock_systems
+    container_name: mock-bharat
+    environment:
+      - SYSTEM_TYPE=hl7
+      - ORG_NAME=Bharat ER
+    ports:
+      - "8007:80"
+    volumes:
+      - ./mock_data/mock-bharat:/data
+
+  mock-apex:
+    build: ./mock_systems
+    container_name: mock-apex
+    environment:
+      - SYSTEM_TYPE=json
+      - ORG_NAME=Apex Imaging
+    ports:
+      - "8008:80"
+    volumes:
+      - ./mock_data/mock-apex:/data
+
+  mock-greenfield:
+    build: ./mock_systems
+    container_name: mock-greenfield
+    environment:
+      - SYSTEM_TYPE=spreadsheet
+      - ORG_NAME=Greenfield PHC
+    ports:
+      - "8009:80"
+    volumes:
+      - ./mock_data/mock-greenfield:/data
+
 volumes:
   pgdata:
   miniodata:
