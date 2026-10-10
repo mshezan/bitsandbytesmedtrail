@@ -29,10 +29,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
+
   useEffect(() => {
     fetchAPI('/me').then(res => {
       if (res && res.user) {
         setUser(res.user);
+        if (res.user.role === 'hospital_staff' && !pathname.startsWith('/hospital') && !pathname.startsWith('/shared')) {
+           router.push('/hospital/dashboard');
+        }
       }
     }).catch(err => {
       if (pathname !== '/login') {
@@ -41,6 +45,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       }
     });
   }, [pathname]);
+
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

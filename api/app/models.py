@@ -24,7 +24,8 @@ from app.database import Base
 
 class UserRole(str, enum.Enum):
     patient = "patient"
-    clinician = "clinician"
+    hospital_staff = "hospital_staff"
+    org_admin = "org_admin"
 
 
 class RecordType(str, enum.Enum):
@@ -67,6 +68,10 @@ class Patient(Base):
     abha_number: Mapped[str | None] = mapped_column(String(32))
     abha_address: Mapped[str | None] = mapped_column(String(128))
     insurance: Mapped[str | None] = mapped_column(String(128))
+    phone: Mapped[str | None] = mapped_column(String(32))
+    city: Mapped[str | None] = mapped_column(String(100))
+    state: Mapped[str | None] = mapped_column(String(100))
+    language: Mapped[str | None] = mapped_column(String(64))
 
     user: Mapped[User] = relationship(back_populates="patient")
     records: Mapped[list["Record"]] = relationship(back_populates="patient")
@@ -99,6 +104,8 @@ class Record(Base):
     confidence: Mapped[float | None] = mapped_column(Float)
     verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     file_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("files.id"))
+    source_org_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("organizations.id"))
+    created_by_staff_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("staff.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     patient: Mapped[Patient] = relationship(back_populates="records")
@@ -189,3 +196,53 @@ class OverdueTestRule(Base):
     test_name: Mapped[str] = mapped_column(String(100), nullable=False)
     condition_trigger: Mapped[str | None] = mapped_column(String(100))
     interval_days: Mapped[int] = mapped_column(Integer, nullable=False)
+
+class Organization(Base):
+    __tablename__ = "organizations"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    type: Mapped[str] = mapped_column(String(64), nullable=False)
+    city: Mapped[str | None] = mapped_column(String(100))
+    state: Mapped[str | None] = mapped_column(String(100))
+    registration_no: Mapped[str | None] = mapped_column(String(100))
+    api_key_hash: Mapped[str | None] = mapped_column(String(128))
+    status: Mapped[str] = mapped_column(String(32), default="active")
+
+class Staff(Base):
+    __tablename__ = "staff"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), unique=True, nullable=False)
+    org_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    role: Mapped[str] = mapped_column(String(64), nullable=False)
+    designation: Mapped[str | None] = mapped_column(String(100))
+    license_no: Mapped[str | None] = mapped_column(String(100))
+
+class AccessEvent(Base):
+    __tablename__ = "access_events"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patients.id"), nullable=False)
+    org_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    staff_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("staff.id"))
+    purpose: Mapped[str] = mapped_column(String(200), nullable=False)
+    scope: Mapped[str] = mapped_column(String(64), nullable=False)
+    records_viewed: Mapped[int] = mapped_column(Integer, default=0)
+    ip: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+class Consent(Base):
+    __tablename__ = "consents"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patients.id"), nullable=False)
+    org_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    scope: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+class ApiKey(Base):
+    __tablename__ = "api_keys"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+    hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
