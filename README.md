@@ -1,5 +1,5 @@
 # MedTrail (Hackathon Prototype)
-
+Demo video - https://youtu.be/_6KviG-sSw8
 MedTrail is a unified clinical data platform with a dual-sided architecture:
 1. **Patient Portal**: The longitudinal, unified health record for the patient.
 2. **Hospital Portal (Doctor Side)**: The high-speed clinical EMR optimized for 10-second contextual awareness, built on top of the unified API layer.
