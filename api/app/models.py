@@ -378,6 +378,7 @@ class Appointment(Base):
     doctor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("staff.id"))
     time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String) # booked, arrived, completed
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 class TriageEntry(Base):
     __tablename__ = "triage_entries"

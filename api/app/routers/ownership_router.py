@@ -260,11 +260,11 @@ def set_share_visibility(record_id: uuid.UUID, req: ShareVisibility,
 
 @router.post("/privacy/requests", status_code=201)
 def create_privacy_request(req: PrivacyRequestCreate, patient: CurrentPatient, db: SessionDep):
-    if req.request_type not in {"deletion", "restriction"}:
-        raise HTTPException(422, "Request type must be deletion or restriction")
-    row = PrivacyRequest(patient_id=patient.id, request_type=req.request_type, reason=req.reason)
+    if req.request_type != "deletion":
+        raise HTTPException(422, "Patients can submit record removal requests")
+    row = PrivacyRequest(patient_id=patient.id, request_type="deletion", reason=req.reason)
     db.add(row)
-    _audit(db, patient.id, "patient", "Self", f"Requested data {req.request_type}", req.reason)
+    _audit(db, patient.id, "patient", "Self", "Requested record removal review", req.reason)
     db.commit()
     db.refresh(row)
     return {"id": str(row.id), "status": row.status}

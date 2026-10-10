@@ -21,3 +21,10 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Render Postgres exposes a legacy ``postgres://`` connection string. SQLAlchemy
+# 2 expects the explicit PostgreSQL dialect prefix used by this project's driver.
+if settings.database_url.startswith("postgres://"):
+    settings.database_url = settings.database_url.replace(
+        "postgres://", "postgresql+psycopg2://", 1
+    )

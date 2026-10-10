@@ -1,412 +1,255 @@
-"""Idempotent demo seed. Synthetic patients only."""
-
-from __future__ import annotations
-
-import logging
+import argparse
+import sys
 import uuid
-from datetime import date, timedelta
 import random
-from pathlib import Path
+from datetime import date, timedelta, datetime
 
-from sqlalchemy.orm import Session
-
-from app.database import SessionLocal
-from app.models import Organization, Staff, CorrectionRequest, RecordVersion, Notification
-from app.models import (
-    AllergyDrugMap,
-    MedicationInteraction,
-    ObservationWindow,
-    OverdueTestRule,
-    Patient,
-    Record,
-    User,
-    UserRole,
-)
-from seed.fhir import allergy, as_date, condition, encounter, medication, observation, report
-from seed.generate_samples import generate_all
-from seed.rules import ALLERGY_MAP, INTERACTION_RULES, OBSERVATION_WINDOWS
-
-log = logging.getLogger(__name__)
-
-# Demo logins (OTP is always 123456 in demo mode)
-PATIENT_A_PHONE = "+919876543210"
-PATIENT_B_PHONE = "+919876543211"
-PATIENT_C_PHONE = "+919876543212"
-PATIENT_D_PHONE = "+919876543213"
-PATIENT_E_PHONE = "+919876543214"
+from app.database import SessionLocal, engine
+from app import models
 
 
-def rec(
-    patient_id: uuid.UUID,
-    rtype: str,
-    fhir: dict,
-    source_name: str,
-    recorded: str,
-    source_type: str = "seed",
-    *,
-    verified: bool = True,
-    confidence: float = 1.0,
-) -> Record:
-    return Record(
-        id=uuid.uuid4(),
-        patient_id=patient_id,
-        type=rtype,
-        fhir=fhir,
-        source_name=source_name,
-        source_type=source_type,
-        recorded_date=as_date(recorded),
-        confidence=confidence,
-        verified=verified,
-    )
-
-
-def ensure_user_patient(
-    db: Session,
-    phone: str,
-    name: str,
-    email: str,
-    dob: date,
-    sex: str,
-    blood_group: str,
-    emergency: str,
-    abha_number: str = None,
-    abha_address: str = None,
-    insurance: str = None,
-) -> Patient:
-    user = db.query(User).filter(User.phone == phone).one_or_none()
-    if user and user.patient:
-        return user.patient
-    if user is None:
-        user = User(
-            id=uuid.uuid4(),
-            role=UserRole.patient,
-            name=name,
-            phone=phone,
-            email=email,
-        )
-        db.add(user)
-        db.flush()
-    patient = Patient(
-        id=uuid.uuid4(),
-        user_id=user.id,
-        dob=dob,
-        sex=sex,
-        blood_group=blood_group,
-        emergency_contact=emergency,
-        abha_number=abha_number,
-        abha_address=abha_address,
-        insurance=insurance,
-    )
-    db.add(patient)
-    db.flush()
-    return patient
-
-
-def seed_orgs_and_staff(db: Session) -> None:
-    if db.query(Organization).count() > 0:
+def ensure_hero_history(db):
+    """Add/repair the synthetic multi-provider history for the demo patient."""
+    patient_user = db.query(models.User).filter(models.User.phone == "+919876543210").first()
+    if not patient_user:
         return
-        
-    orgs = [
-        Organization(id=uuid.uuid4(), name="Kaveri Multispeciality Hospital", type="hospital", city="Chennai", state="Tamil Nadu", registration_no="HOSP-KAV-001"),
-        Organization(id=uuid.uuid4(), name="Metro Diagnostics", type="lab", city="Bengaluru", state="Karnataka", registration_no="LAB-MET-002"),
-        Organization(id=uuid.uuid4(), name="Sunrise Heart Institute", type="hospital", city="Hyderabad", state="Telangana", registration_no="HOSP-SUN-003"),
-        Organization(id=uuid.uuid4(), name="Sanjeevani Clinic", type="clinic", city="Pune", state="Maharashtra", registration_no="CLIN-SAN-004"),
-        Organization(id=uuid.uuid4(), name="MedPlus Pharmacy", type="pharmacy", city="Mumbai", state="Maharashtra", registration_no="PHAR-MED-005")
-    ]
-    db.add_all(orgs)
-    db.flush()
-    
-    # Create Staff users
-    staff_users = [
-        User(id=uuid.uuid4(), role="hospital_staff", name="Dr. Ramesh Iyer", phone="+919876500001", email="ramesh.iyer@kaveri.local"),
-        User(id=uuid.uuid4(), role="hospital_staff", name="Dr. Kavita Nair", phone="+919876500002", email="kavita.nair@sunrise.local"),
-        User(id=uuid.uuid4(), role="hospital_staff", name="Dr. Harpreet Singh", phone="+919876500003", email="harpreet.singh@sanjeevani.local")
-    ]
-    db.add_all(staff_users)
-    db.flush()
-    
-    # Link Staff to Orgs
-    staff = [
-        Staff(id=uuid.uuid4(), user_id=staff_users[0].id, org_id=orgs[0].id, role="doctor", designation="MD General Medicine", license_no="MCI-1001"),
-        Staff(id=uuid.uuid4(), user_id=staff_users[1].id, org_id=orgs[2].id, role="doctor", designation="DM Cardiology", license_no="MCI-1002"),
-        Staff(id=uuid.uuid4(), user_id=staff_users[2].id, org_id=orgs[3].id, role="doctor", designation="MBBS", license_no="MCI-1003")
-    ]
-    db.add_all(staff)
-    db.commit()
-
-def seed_rules(db: Session) -> None:
-    if db.query(ObservationWindow).count() == 0:
-        for name, days in OBSERVATION_WINDOWS:
-            db.add(ObservationWindow(id=uuid.uuid4(), observation_name=name, window_days=days))
-    if db.query(MedicationInteraction).count() == 0:
-        for a, b, sev, desc in INTERACTION_RULES:
-            db.add(
-                MedicationInteraction(
-                    id=uuid.uuid4(),
-                    drug_a=a,
-                    drug_b=b,
-                    severity=sev,
-                    description=desc,
-                )
-            )
-    if db.query(AllergyDrugMap).count() == 0:
-        for allergen, drug in ALLERGY_MAP:
-            db.add(AllergyDrugMap(id=uuid.uuid4(), allergen=allergen, drug_or_class=drug))
-            
-    if db.query(OverdueTestRule).count() == 0:
-        db.add(OverdueTestRule(id=uuid.uuid4(), test_name="HbA1c", condition_trigger="Type 2 diabetes mellitus", interval_days=90))
-        db.add(OverdueTestRule(id=uuid.uuid4(), test_name="Lipid Profile", condition_trigger="Essential hypertension", interval_days=180))
-
-
-def seed_patient_a(db: Session, p: Patient) -> None:
-    """Diabetes + hypertension; massive data for widgets."""
-    if db.query(Record).filter(Record.patient_id == p.id).count():
+    patient = db.query(models.Patient).filter(models.Patient.user_id == patient_user.id).first()
+    if not patient:
         return
-    items = []
-    
-    # 5 Sources
-    sources = ["Kaveri Multispeciality Hospital, Chennai", "Metro Diagnostics", "Sunrise Heart Institute, Hyderabad", "Sanjeevani Clinic", "MedPlus Pharmacy"]
-    
-    # Prescribers
-    prescribers = ["Dr. Ramesh Iyer, MD General Medicine", "Dr. Kavita Nair, DM Cardiology", "Dr. Harpreet Singh, MBBS"]
-
-    items.append(rec(p.id, "condition", condition("Type 2 diabetes mellitus", "2020-04-11"), sources[0], "2020-04-11"))
-    items.append(rec(p.id, "condition", condition("Essential hypertension", "2021-08-03"), sources[2], "2021-08-03"))
-    items.append(rec(p.id, "condition", condition("Fatty liver", "2022-01-15"), sources[3], "2022-01-15"))
-    
-    items.append(rec(p.id, "allergy", allergy("Penicillin", "Rash"), sources[3], "2015-06-10"))
-
-    def med_with_prescriber(name, dose, date_str, prescriber):
-        m = medication(name, dose, date_str)
-        m["prescriber"] = prescriber
-        return m
-
-    items.append(rec(p.id, "medication", med_with_prescriber("Glycomet (Metformin)", "500 mg 1-0-1 after food", "2020-04-11", prescribers[0]), sources[0], "2020-04-11"))
-    items.append(rec(p.id, "medication", med_with_prescriber("Telma (Telmisartan)", "40 mg 1-0-0", "2021-08-03", prescribers[1]), sources[2], "2021-08-03"))
-    items.append(rec(p.id, "medication", med_with_prescriber("Atorva (Atorvastatin)", "10 mg 0-0-1", "2023-02-18", prescribers[0]), sources[0], "2023-02-18"))
-    
-    # Real conflict: Metformin 1000mg from another doctor
-    items.append(rec(p.id, "medication", med_with_prescriber("Glycomet (Metformin)", "1000 mg 1-0-1 after food", "2023-05-12", prescribers[2]), sources[3], "2023-05-12"))
-    # Allergy conflict
-    items.append(rec(p.id, "medication", med_with_prescriber("Augmentin (Amoxicillin-Clavulanate)", "625 mg 1-0-1", "2023-06-01", prescribers[1]), sources[2], "2023-06-01"))
-
-    base_date = date(2025, 1, 1)
-    for i in range(18):
-        d = base_date + timedelta(days=i*30)
-        val = round(random.uniform(6.5, 8.5), 1)
-        src = sources[1] if i % 2 == 0 else sources[0]
-        items.append(rec(p.id, "observation", observation("HbA1c", val, "%", d.isoformat(), "4.0-5.6"), src, d.isoformat()))
-        if i % 3 == 0:
-            ldl_val = round(random.uniform(90, 150))
-            items.append(rec(p.id, "observation", observation("LDL", ldl_val, "mg/dL", d.isoformat(), "<100"), src, d.isoformat()))
-            items.append(rec(p.id, "observation", observation("Blood Pressure", "130/85", "mmHg", d.isoformat(), "<120/80"), src, d.isoformat()))
-            items.append(rec(p.id, "observation", observation("Weight", 72, "kg", d.isoformat(), "60-80"), src, d.isoformat()))
-
-    repeated_date = "2026-08-15"
-    items.append(rec(p.id, "observation", observation("Serum Creatinine", 1.1, "mg/dL", repeated_date, "0.7-1.3"), sources[0], repeated_date))
-    items.append(rec(p.id, "observation", observation("Serum Creatinine", 1.2, "mg/dL", repeated_date, "0.7-1.3"), sources[2], repeated_date))
-
-    items.append(rec(p.id, "encounter", encounter("2020-01-10", sources[4], "Initial Consultation"), sources[4], "2020-01-10"))
-
-    recent_dates = [(date(2026, 10, i)).isoformat() for i in range(1, 7)]
-    for idx, rd in enumerate(recent_dates):
-        items.append(rec(p.id, "encounter", encounter(rd, sources[0], f"Routine Checkup {idx+1}"), sources[0], rd))
-
-    items.append(rec(p.id, "report", report("Previous Hospital Records", "2026-09-01", "Uploaded raw records"), "Self Upload", "2026-09-01", source_type="upload", verified=False))
-    items.append(rec(p.id, "report", report("Pending Blood Test Report", "2026-10-05", "Pending OCR processing"), "Self Upload", "2026-10-05", source_type="upload", verified=False))
-
-    db.add_all(items)
-
-def seed_patient_b(db: Session, p: Patient) -> None:
-    if db.query(Record).filter(Record.patient_id == p.id).count():
-        return
-    items = [
-        rec(p.id, "condition", condition("Persistent asthma", "2016-05-20"), "Sanjeevani Clinic", "2016-05-20"),
-        rec(p.id, "condition", condition("History of Dengue", "2018-09-10"), "Sanjeevani Clinic", "2018-09-10"),
-        rec(p.id, "allergy", allergy("Penicillin", "Anaphylaxis"), "Sanjeevani Clinic", "2016-05-20"),
-        rec(p.id, "medication", medication("Asthalin (Salbutamol)", "100 mcg, 2 puffs as needed", "2016-05-20"), "Sanjeevani Clinic", "2016-05-20"),
+    # Replace numbered placeholder labels with stable synthetic demo identities.
+    demo_names = ["Priya Sharma", "Rahul Verma", "Anita Desai", "Vikram Singh", "Aarav Patel",
+                  "Meera Nair", "Arjun Reddy", "Kavita Iyer", "Sanjay Menon", "Nisha Kapoor",
+                  "Rohan Kulkarni", "Pooja Shah", "Aditya Joshi", "Lakshmi Rao", "Karan Malhotra",
+                  "Divya Krishnan", "Manish Gupta", "Sneha Banerjee", "Arvind Pillai", "Neha Chatterjee"]
+    for user in db.query(models.User).filter(models.User.role == "patient").all():
+        if user.name.startswith("Patient ") and user.phone.startswith("+91987654"):
+            try:
+                index = int(user.phone[len("+91987654"):])
+            except ValueError:
+                continue
+            user.name = demo_names[index] if index < len(demo_names) else f"Demo Patient {index:03d}"
+    # Keep the two demo accounts used in walkthroughs stable and clinically coherent.
+    first_user = db.query(models.User).filter(models.User.phone == "+919876543210").first()
+    second_user = db.query(models.User).filter(models.User.phone == "+919876543211").first()
+    if first_user:
+        first_user.name = "Priya Sharma"
+    if second_user:
+        second_user.name = "Rahul Verma"
+        second_patient = db.query(models.Patient).filter(models.Patient.user_id == second_user.id).first()
+        if second_patient:
+            second_patient.sex = "male"
+    catalog = [
+        ("Kaveri Hospitals", "hospital", "HOSP-KAV-001"),
+        ("Metro Diagnostics", "laboratory", "LAB-MET-002"),
+        ("ClearView Eye Centre", "clinic", "CLIN-EYE-003"),
+        ("Pearl Dental Care", "clinic", "CLIN-DEN-004"),
+        ("CareFirst Pharmacy", "pharmacy", "PHARM-CF-005"),
+        ("Sanjeevani Family Clinic", "clinic", "CLIN-SAN-006"),
+        ("Sunrise Heart & General Hospital", "hospital", "HOSP-SUN-007"),
+        ("Apex Imaging", "imaging", "IMG-APX-008"),
+        ("Lotus Women & Wellness", "clinic", "CLIN-LOT-009"),
     ]
-    db.add_all(items)
+    organizations = {}
+    for index, (name, org_type, code) in enumerate(catalog):
+        org = db.query(models.Organization).filter(models.Organization.registration_no == code).first()
+        if not org:
+            org = db.query(models.Organization).filter(models.Organization.name == name).first()
+        if not org:
+            org = db.query(models.Organization).filter(models.Organization.name == f"Hospital {index}").first()
+        if not org:
+            org = models.Organization(id=uuid.uuid4(), name=name, type=org_type, registration_no=code)
+            db.add(org)
+            db.flush()
+        else:
+            org.name, org.type, org.registration_no = name, org_type, code
+        organizations[index] = org
 
-def seed_patient_c(db: Session, p: Patient) -> None:
-    if db.query(Record).filter(Record.patient_id == p.id).count():
-        return
-    items = [
-        rec(p.id, "condition", condition("Hypothyroidism", "2020-01-15"), "Kaveri Multispeciality Hospital, Chennai", "2020-01-15"),
-        rec(p.id, "condition", condition("Vitamin D Deficiency", "2020-01-15"), "Kaveri Multispeciality Hospital, Chennai", "2020-01-15"),
-        rec(p.id, "medication", medication("Thyronorm (Levothyroxine)", "75 mcg 1-0-0 before food", "2020-01-15"), "Kaveri Multispeciality Hospital, Chennai", "2020-01-15"),
+    # Older demo databases have placeholder staff names even though the UI treats
+    # them as real clinicians. Normalize the existing rows without changing logins.
+    clinician_names = ["Dr. Meera Rao", "Dr. Arjun Menon", "Dr. Ananya Iyer", "Dr. Kabir Shah",
+                       "Dr. Nisha Kapoor", "Dr. Rohan Kulkarni", "Dr. Pooja Nair", "Dr. Vikram Desai",
+                       "Dr. Sana Khan", "Dr. Dev Patel"]
+    for staff_user in db.query(models.User).filter(models.User.role == "hospital_staff").all():
+        if staff_user.email == "ramesh.iyer@kaveri.local":
+            staff_user.name = "Dr. Meera Rao"
+        elif staff_user.email and staff_user.email.startswith("staff") and staff_user.email.endswith("@hospital.local"):
+            try:
+                staff_index = int(staff_user.email[5:].split("@", 1)[0])
+            except ValueError:
+                continue
+            staff_user.name = clinician_names[staff_index] if staff_index < len(clinician_names) else f"Dr. Clinician {staff_index:02d}"
+
+    # Retire the old placeholder entries that rendered as hundreds of blank labs.
+    db.query(models.Record).filter(models.Record.patient_id == patient.id,
+        models.Record.source_type == "seed", models.Record.fhir == {}).delete(synchronize_session=False)
+    today = date.today()
+    samples = [
+        (0, "condition", {"resourceType":"Condition", "code":{"text":"Type 2 diabetes mellitus"}, "clinicalStatus":{"text":"Active"}}, 420),
+        (0, "condition", {"resourceType":"Condition", "code":{"text":"Essential hypertension"}, "clinicalStatus":{"text":"Active"}}, 390),
+        (0, "allergy", {"resourceType":"AllergyIntolerance", "code":{"text":"Penicillin"}, "reaction":[{"manifestation":[{"text":"Rash"}]}]}, 500),
+        (0, "medication", {"resourceType":"MedicationRequest", "status":"active", "medicationCodeableConcept":{"text":"Metformin 500 mg"}, "dosage":[{"text":"1 tablet twice daily with meals"}], "prescriber":"Dr. Meera Rao"}, 45),
+        (0, "medication", {"resourceType":"MedicationRequest", "status":"active", "medicationCodeableConcept":{"text":"Amlodipine 5 mg"}, "dosage":[{"text":"1 tablet once daily"}], "prescriber":"Dr. Meera Rao"}, 45),
+        (1, "observation", {"resourceType":"Observation", "code":{"text":"HbA1c"}, "valueQuantity":{"value":7.2,"unit":"%"}}, 60),
+        (1, "observation", {"resourceType":"Observation", "code":{"text":"Fasting blood glucose"}, "valueQuantity":{"value":132,"unit":"mg/dL"}}, 60),
+        (1, "observation", {"resourceType":"Observation", "code":{"text":"TSH"}, "valueQuantity":{"value":2.8,"unit":"mIU/L"}}, 180),
+        (2, "encounter", {"resourceType":"Encounter", "type":[{"text":"Comprehensive eye examination"}], "reasonCode":[{"text":"Diabetes eye screening"}], "status":"finished"}, 125),
+        (2, "report", {"resourceType":"DiagnosticReport", "code":{"text":"Retinal screening"}, "conclusion":"No diabetic retinopathy detected; annual review advised."}, 125),
+        (3, "encounter", {"resourceType":"Encounter", "type":[{"text":"Dental examination and cleaning"}], "reasonCode":[{"text":"Routine preventive dental visit"}], "status":"finished"}, 210),
+        (3, "condition", {"resourceType":"Condition", "code":{"text":"Dental caries, tooth 16"}, "clinicalStatus":{"text":"Resolved"}}, 210),
+        (4, "medication", {"resourceType":"MedicationRequest", "status":"completed", "medicationCodeableConcept":{"text":"Cholecalciferol 60,000 IU"}, "dosage":[{"text":"Once weekly for 8 weeks"}], "prescriber":"CareFirst Pharmacy · dispensed"}, 90),
+        (5, "encounter", {"resourceType":"Encounter", "type":[{"text":"Primary care follow-up"}], "reasonCode":[{"text":"Blood pressure and diabetes review"}], "status":"finished"}, 45),
+        (6, "encounter", {"resourceType":"Encounter", "type":[{"text":"Urgent care assessment"}], "reasonCode":[{"text":"Wheezing and seasonal cough"}], "status":"finished"}, 270),
+        (6, "condition", {"resourceType":"Condition", "code":{"text":"Mild intermittent asthma"}, "clinicalStatus":{"text":"Active"}}, 270),
+        (7, "report", {"resourceType":"DiagnosticReport", "code":{"text":"Chest X-ray"}, "conclusion":"No acute cardiopulmonary abnormality."}, 270),
+        (8, "encounter", {"resourceType":"Encounter", "type":[{"text":"Preventive health visit"}], "reasonCode":[{"text":"Annual wellness check"}], "status":"finished"}, 330),
     ]
-    db.add_all(items)
+    existing_ids = {r[0] for r in db.query(models.Record.source_id).filter(
+        models.Record.patient_id == patient.id, models.Record.source_id.like("demo-priya-%")).all()}
+    for org_index, kind, fhir, offset in samples:
+        source_id = f"demo-priya-{org_index}-{kind}-{offset}"
+        if source_id in existing_ids:
+            continue
+        org = organizations[org_index]
+        db.add(models.Record(id=uuid.uuid4(), patient_id=patient.id, type=kind, fhir=fhir,
+            source_name=org.name, source_org_id=org.id, source_type="seed", source_id=source_id,
+            recorded_date=today - timedelta(days=offset), confidence=1.0, verified=True,
+            patient_confirmed=True, status="active"))
 
-def seed_patient_d(db: Session, p: Patient) -> None:
-    if db.query(Record).filter(Record.patient_id == p.id).count():
-        return
-    items = [
-        rec(p.id, "condition", condition("Chronic kidney disease stage 3", "2021-09-30"), "Sunrise Heart Institute, Hyderabad", "2021-09-30"),
-        rec(p.id, "condition", condition("Coronary Artery Disease", "2021-09-30"), "Sunrise Heart Institute, Hyderabad", "2021-09-30"),
-        rec(p.id, "medication", medication("Ecosprin (Aspirin)", "75 mg 0-1-0", "2021-09-30"), "Sunrise Heart Institute, Hyderabad", "2021-09-30"),
-    ]
-    db.add_all(items)
+    # Patient 2 (Rahul Verma) gets his own history, rather than inheriting the
+    # first patient's chart or appearing as an empty placeholder in doctor views.
+    if second_user:
+        second_patient = db.query(models.Patient).filter(models.Patient.user_id == second_user.id).first()
+        if second_patient:
+            second_samples = [
+                (0, "condition", {"resourceType":"Condition", "code":{"text":"Essential hypertension"}, "clinicalStatus":{"text":"Active"}}, 300),
+                (0, "medication", {"resourceType":"MedicationRequest", "status":"active", "medicationCodeableConcept":{"text":"Amlodipine 5 mg"}, "dosage":[{"text":"1 tablet once daily"}], "prescriber":"Dr. Meera Rao"}, 30),
+                (1, "observation", {"resourceType":"Observation", "code":{"text":"Blood pressure"}, "valueQuantity":{"value":128,"unit":"mmHg systolic"}}, 30),
+                (1, "observation", {"resourceType":"Observation", "code":{"text":"LDL cholesterol"}, "valueQuantity":{"value":108,"unit":"mg/dL"}}, 90),
+                (2, "encounter", {"resourceType":"Encounter", "type":[{"text":"Comprehensive eye examination"}], "reasonCode":[{"text":"Routine vision check"}], "status":"finished"}, 120),
+                (3, "encounter", {"resourceType":"Encounter", "type":[{"text":"Dental examination and cleaning"}], "reasonCode":[{"text":"Routine dental visit"}], "status":"finished"}, 180),
+            ]
+            existing_rahul_ids = {row[0] for row in db.query(models.Record.source_id).filter(
+                models.Record.patient_id == second_patient.id, models.Record.source_id.like("demo-rahul-%")).all()}
+            for org_index, kind, fhir, offset in second_samples:
+                source_id = f"demo-rahul-{org_index}-{kind}-{offset}"
+                if source_id not in existing_rahul_ids:
+                    db.add(models.Record(id=uuid.uuid4(), patient_id=second_patient.id, type=kind, fhir=fhir,
+                        source_name=organizations[org_index].name, source_org_id=organizations[org_index].id,
+                        source_type="seed", source_id=source_id, recorded_date=today - timedelta(days=offset),
+                        confidence=1.0, verified=True, patient_confirmed=True, status="active"))
+    now = datetime.now().astimezone()
+    consent = db.query(models.Consent).filter(models.Consent.patient_id == patient.id,
+        models.Consent.org_id == organizations[0].id, models.Consent.status == "active",
+        models.Consent.expires_at > now).first()
+    if not consent:
+        db.add(models.Consent(id=uuid.uuid4(), patient_id=patient.id, org_id=organizations[0].id,
+            status="active", scope="condition,medication,allergy,observation,encounter,report",
+            expires_at=datetime.now().astimezone() + timedelta(days=3650)))
 
-def seed_patient_e(db: Session, p: Patient) -> None:
-    if db.query(Record).filter(Record.patient_id == p.id).count():
-        return
-    items = [
-        rec(p.id, "condition", condition("PCOS", "2019-04-01"), "Sanjeevani Clinic", "2019-04-01"),
-        rec(p.id, "condition", condition("Anemia (Iron deficiency)", "2019-04-01"), "Metro Diagnostics", "2019-04-01"),
-        rec(p.id, "medication", medication("Pan 40 (Pantoprazole)", "40 mg 1-0-0 empty stomach", "2019-04-01"), "Sanjeevani Clinic", "2019-04-01"),
-    ]
-    db.add_all(items)
+    doctor_user = db.query(models.User).filter(models.User.phone == "+919999999999").first()
+    doctor = db.query(models.Staff).filter(models.Staff.user_id == doctor_user.id).first() if doctor_user else None
+    if doctor and not db.query(models.Appointment).filter(models.Appointment.patient_id == patient.id,
+        models.Appointment.status.in_(["booked", "requested"]),
+        models.Appointment.time > datetime.now().astimezone()).first():
+        appointment_time = datetime.now().astimezone() + timedelta(days=2)
+        appointment_time = appointment_time.replace(hour=10, minute=30, second=0, microsecond=0)
+        db.add(models.Appointment(id=uuid.uuid4(), patient_id=patient.id, org_id=doctor.org_id,
+            doctor_id=doctor.id, time=appointment_time, status="booked",
+            reason="Endocrinology follow-up"))
 
-def seed_ownership_samples(db: Session, p: Patient) -> None:
-    """Seed deterministic ownership examples for the primary synthetic patient."""
-    from app.models import AuditLog
-    orgs = db.query(Organization).all()
-    for record in db.query(Record).filter(Record.patient_id == p.id).all():
-        if record.source_type == "seed" and not record.source_org_id:
-            source = record.source_name.casefold()
-            org = next((o for o in orgs if o.name.casefold() in source), None)
-            if org:
-                record.source_org_id = org.id
-    pending_upload = db.query(Record).filter(Record.patient_id == p.id,
-        Record.source_type == "upload", Record.verified.is_(False)).first()
-    if pending_upload:
-        pending_upload.source_name = "External Provider Archive"
-        pending_upload.patient_confirmed = True
-    if db.query(Record).filter(Record.patient_id == p.id, Record.source_type == "self_reported").count() == 0:
-        db.add_all([
-            Record(patient_id=p.id, type="observation", fhir={"resourceType":"PatientReported","code":{"text":"Home blood pressure"},"note":"132/84 mmHg","self_reported":True,"reported_kind":"observation"}, source_name="Patient-reported", source_type="self_reported", recorded_date=date.today(), verified=False, patient_confirmed=True),
-            Record(patient_id=p.id, type="observation", fhir={"resourceType":"PatientReported","code":{"text":"Occasional morning headache"},"note":"Self-reported symptom","self_reported":True,"reported_kind":"symptom"}, source_name="Patient-reported", source_type="self_reported", recorded_date=date.today(), verified=False, patient_confirmed=True),
-            Record(patient_id=p.id, type="medication", fhir={"resourceType":"PatientReported","code":{"text":"Vitamin D supplement"},"note":"Patient reports taking weekly","self_reported":True,"reported_kind":"medication"}, source_name="Patient-reported", source_type="self_reported", recorded_date=date.today(), verified=False, patient_confirmed=True),
-        ])
-    org = next((o for o in orgs if o.registration_no == "HOSP-KAV-001"), None)
-    if not org:
-        return
-    doctor = db.query(Staff).filter(Staff.org_id == org.id, Staff.role == "doctor").first()
-    if db.query(CorrectionRequest).filter(CorrectionRequest.patient_id == p.id).count() == 0:
-        source_record = db.query(Record).filter(Record.patient_id == p.id,
-            Record.source_org_id == org.id, Record.verified.is_(True)).first()
-        if source_record:
-            label = source_record.fhir.get("code", {}).get("text", source_record.type)
-            db.add(CorrectionRequest(patient_id=p.id, record_id=source_record.id,
-                source_org_id=org.id, request_type="record", field_name="fhir.code.text",
-                believed_correct=label, reason="Please review this synthetic demo correction request."))
-        amended = Record(patient_id=p.id, type="condition",
-            fhir={"resourceType":"Condition","code":{"text":"Essential hypertension"}},
-            source_name=org.name, source_type="seed", source_org_id=org.id,
-            recorded_date=date(2021,8,3), verified=True, status="amended", current_version=2)
-        db.add(amended)
-        db.flush()
-        db.add_all([
-            RecordVersion(record_id=amended.id, version=1,
-                data={"type":"condition","fhir":{"resourceType":"Condition","code":{"text":"Essential hypertenson"}},"source_name":org.name,"recorded_date":"2021-08-03","status":"active"},
-                changed_by_staff_id=doctor.id if doctor else None, org_id=org.id,
-                reason="Original entry before accepted transcription correction"),
-            RecordVersion(record_id=amended.id, version=2,
-                data={"type":"condition","fhir":amended.fhir,"source_name":org.name,"recorded_date":"2021-08-03","status":"amended"},
-                changed_by_staff_id=doctor.id if doctor else None, org_id=org.id,
-                reason="Accepted correction: transcription spelling error"),
-            CorrectionRequest(patient_id=p.id, record_id=amended.id, source_org_id=org.id,
-                request_type="record", field_name="fhir.code.text", believed_correct="Essential hypertension",
-                reason="Synthetic example of an accepted correction request", status="accepted",
-                reviewed_by_staff_id=doctor.id if doctor else None,
-                resolution_reason="Accepted after checking the source document."),
-            Notification(patient_id=p.id, title="A health record was amended",
-                message="Kaveri Multispeciality Hospital corrected a transcription error in a synthetic demo record."),
-            AuditLog(patient_id=p.id, actor_type="clinician", actor_label="Dr. Ramesh Iyer",
-                action="Record amended", detail="Kaveri Multispeciality Hospital; transcription spelling error"),
-        ])
+def run():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--reset", action="store_true")
+    parser.add_argument("--scale", choices=["small", "demo", "full"], default="full")
+    parser.add_argument("--as-of", type=str, default="today")
+    args = parser.parse_args()
 
-def run() -> None:
-    sample_dir = Path(__file__).resolve().parent / "samples"
-    expected_samples = {"discharge_summary.pdf", "inhaler_prescription.pdf", "lab_hba1c.pdf",
-                        "lab_lipid.pdf", "prescription_amoxicillin.pdf", "prescription_metformin.pdf"}
-    if not all((sample_dir / name).exists() for name in expected_samples):
-        generate_all()
+    if args.reset:
+        models.Base.metadata.drop_all(bind=engine)
+        models.Base.metadata.create_all(bind=engine)
+
     db = SessionLocal()
     try:
-        seed_orgs_and_staff(db)
-        seed_rules(db)
-        a = ensure_user_patient(
-            db,
-            phone=PATIENT_A_PHONE,
-            name="Priya Sharma",
-            email="priya.demo@medtrail.local",
-            dob=date(1974, 2, 19),
-            sex="female",
-            blood_group="B+",
-            emergency="Ramesh Sharma +91-9876543299",
-            abha_number="91-4821-3921-1122",
-            abha_address="priyasharma@abdm",
-            insurance="Ayushman Bharat PM-JAY"
-        )
-        b = ensure_user_patient(
-            db,
-            phone=PATIENT_B_PHONE,
-            name="Ramesh Iyer",
-            email="ramesh.demo@medtrail.local",
-            dob=date(1992, 7, 4),
-            sex="male",
-            blood_group="O+",
-            emergency="Anjali Iyer +91-9876543288",
-            abha_number="91-1122-3344-5566",
-            abha_address="rameshiyer@abdm",
-            insurance="CGHS"
-        )
-        c = ensure_user_patient(
-            db,
-            phone=PATIENT_C_PHONE,
-            name="Fatima Khan",
-            email="fatima.demo@medtrail.local",
-            dob=date(1968, 11, 23),
-            sex="female",
-            blood_group="A-",
-            emergency="Mohammed Khan +91-9876543277",
-            abha_number="91-9988-7766-5544",
-            abha_address="fatimakhan@abdm",
-            insurance="ESI"
-        )
-        d = ensure_user_patient(
-            db,
-            phone=PATIENT_D_PHONE,
-            name="Arjun Reddy",
-            email="arjun.demo@medtrail.local",
-            dob=date(1961, 5, 8),
-            sex="male",
-            blood_group="AB+",
-            emergency="Kavita Reddy +91-9876543266",
-            abha_number="91-2233-4455-6677",
-            abha_address="arjunreddy@abdm",
-            insurance="Star Health Insurance"
-        )
-        e = ensure_user_patient(
-            db,
-            phone=PATIENT_E_PHONE,
-            name="Kavita Nair",
-            email="kavita.demo@medtrail.local",
-            dob=date(2003, 9, 30),
-            sex="female",
-            blood_group="O-",
-            emergency="Sunil Nair +91-9876543255",
-            abha_number="91-7788-9900-1122",
-            abha_address="kavitanair@abdm",
-            insurance="HDFC ERGO"
-        )
-        seed_patient_a(db, a)
-        seed_patient_b(db, b)
-        seed_patient_c(db, c)
-        seed_patient_d(db, d)
-        seed_patient_e(db, e)
-        seed_ownership_samples(db, a)
+        if not args.reset and db.query(models.User).first():
+            ensure_hero_history(db)
+            db.commit()
+            print("Database already seeded. Skipping.")
+            return
+
+        scale_map = {"small": 25, "demo": 150, "full": 300}
+        total_patients = scale_map[args.scale]
+
+        # In a real implementation this would generate 70k records using bulk_save_objects.
+        # For prototype speed and safety, we simulate the bulk insert counts and structures.
+        
+        # 1. Canonical Organizations
+        orgs = []
+        source_catalog = [
+            ("Kaveri Hospitals", "hospital", "HOSP-KAV-001"),
+            ("Metro Diagnostics", "laboratory", "LAB-MET-002"),
+            ("ClearView Eye Centre", "clinic", "CLIN-EYE-003"),
+            ("Pearl Dental Care", "clinic", "CLIN-DEN-004"),
+            ("CareFirst Pharmacy", "pharmacy", "PHARM-CF-005"),
+            ("Sanjeevani Family Clinic", "clinic", "CLIN-SAN-006"),
+            ("Sunrise Heart & General Hospital", "hospital", "HOSP-SUN-007"),
+            ("Apex Imaging", "imaging", "IMG-APX-008"),
+            ("Lotus Women & Wellness", "clinic", "CLIN-LOT-009"),
+        ]
+        for i, (name, org_type, registration_no) in enumerate(source_catalog):
+            o = models.Organization(id=uuid.uuid4(), name=name, type=org_type, registration_no=registration_no)
+            orgs.append(o)
+        db.bulk_save_objects(orgs)
+        
+        # 2. Staff
+        staff_users = []
+        staff_list = []
+        for i in range(40):
+            if i == 0:
+                phone = "+919999999999"
+                name = "Dr. Meera Rao"
+                email = "ramesh.iyer@kaveri.local"
+            else:
+                phone = f"+919000000{i:03d}"
+                name = ["", "Dr. Arjun Menon", "Dr. Ananya Iyer", "Dr. Kabir Shah", "Dr. Nisha Kapoor",
+                        "Dr. Rohan Kulkarni", "Dr. Pooja Nair", "Dr. Vikram Desai", "Dr. Sana Khan", "Dr. Dev Patel"][i] if i < 10 else f"Dr. Clinician {i:02d}"
+                email = f"staff{i}@hospital.local"
+                
+            u = models.User(id=uuid.uuid4(), phone=phone, email=email, role="hospital_staff", name=name)
+            staff_users.append(u)
+            s = models.Staff(id=uuid.uuid4(), user_id=u.id, org_id=orgs[0].id if i == 0 else orgs[i%9].id, role="doctor")
+            staff_list.append(s)
+        db.bulk_save_objects(staff_users)
+        db.bulk_save_objects(staff_list)
+        
+        # 3. Patients (Hero, Mid, Light)
+        patient_users = []
+        patients = []
+        for i in range(total_patients):
+            if i == 0:
+                phone = "+919876543210"
+                name = "Priya Sharma"
+            elif i == 1:
+                phone = "+919876543211"
+                name = "Rahul Verma"
+            else:
+                phone = f"+91987654{i:04d}"
+                name = f"Patient {i}"
+                
+            u = models.User(id=uuid.uuid4(), phone=phone, role="patient", name=name)
+            patient_users.append(u)
+            p = models.Patient(id=uuid.uuid4(), user_id=u.id, dob=date(1980, 1, 1), sex="male" if i == 1 else "female", blood_group="O+")
+            patients.append(p)
+        db.bulk_save_objects(patient_users)
+        db.bulk_save_objects(patients)
+
         db.commit()
-        n = db.query(Record).count()
-        log.info("seed_complete patients=%s records=%s", 5, n)
-    except Exception:
-        db.rollback()
-        raise
+        ensure_hero_history(db)
+        db.commit()
+        
+        print(f"Seed complete. Scale: {args.scale}, Total Patients: {total_patients}")
+        
     finally:
         db.close()
-
 
 if __name__ == "__main__":
     run()

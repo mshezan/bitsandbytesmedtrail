@@ -22,6 +22,17 @@ async def lifespan(_: FastAPI):
         ensure_bucket()
     except Exception:
         log.warning("object_store_unavailable_at_startup")
+    if settings.demo_mode:
+        db = SessionLocal()
+        try:
+            from seed.seed import ensure_hero_history
+            ensure_hero_history(db)
+            db.commit()
+        except Exception:
+            db.rollback()
+            log.exception("demo_history_refresh_failed")
+        finally:
+            db.close()
     yield
 
 

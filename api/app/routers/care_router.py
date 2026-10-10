@@ -6,10 +6,85 @@ from datetime import datetime, date, timedelta, timezone
 import uuid
 
 from app.deps import SessionDep, CurrentUser, CurrentPatient
-from app.models import Record, Share, User, Patient, MedicationInteraction, AllergyDrugMap, Staff, Consent, AccessEvent, PatientRecordNote
+from app.models import Record, Share, User, Patient, MedicationInteraction, AllergyDrugMap, Staff, AccessEvent, PatientRecordNote, Appointment, Organization
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["care"])
+
+class AppointmentRequest(BaseModel):
+    doctor_id: uuid.UUID
+    time: datetime
+    reason: str = Field(min_length=3, max_length=500)
+
+@router.get("/patient/appointment-options")
+def appointment_options(patient: CurrentPatient, db: SessionDep):
+    clinicians = db.query(Staff, User, Organization).join(User, Staff.user_id == User.id).join(
+        Organization, Staff.org_id == Organization.id).filter(User.role.in_(["hospital_staff", "org_admin"])).order_by(User.name).all()
+    return [{"doctor_id": str(staff.id), "doctor": user.name,
+             "specialty": staff.designation or "General Medicine", "hospital": org.name}
+            for staff, user, org in clinicians]
+
+def appointment_payload(appointment: Appointment, db: Session):
+    staff = db.query(Staff).filter(Staff.id == appointment.doctor_id).first()
+    user = db.query(User).filter(User.id == staff.user_id).first() if staff else None
+    organization = db.query(Organization).filter(Organization.id == appointment.org_id).first()
+    return {"id": str(appointment.id), "doctor_id": str(appointment.doctor_id), "type": "checkup", "title": appointment.reason or "Appointment",
+            "date": appointment.time.isoformat(),
+            "doctor": user.name if user else "Clinician", "hospital": organization.name if organization else "Hospital",
+            "status": appointment.status, "reason": appointment.reason}
+
+@router.get("/patient/calendar")
+def patient_calendar(patient: CurrentPatient, db: SessionDep):
+    appointments = db.query(Appointment).filter(Appointment.patient_id == patient.id,
+        Appointment.status != "cancelled").order_by(Appointment.time).all()
+    events = [appointment_payload(appointment, db) for appointment in appointments]
+    upcoming = next((event for event in events if event["status"] in {"booked", "requested"} and
+                     datetime.fromisoformat(event["date"]) >= datetime.now(datetime.fromisoformat(event["date"]).tzinfo)), None)
+    return {"events": events, "next_checkup": upcoming}
+
+@router.post("/patient/appointments", status_code=201)
+def request_appointment(req: AppointmentRequest, patient: CurrentPatient, db: SessionDep):
+    if req.time <= datetime.now(req.time.tzinfo):
+        raise HTTPException(status_code=422, detail="Choose a future date and time")
+    clinician = db.query(Staff).filter(Staff.id == req.doctor_id).first()
+    if not clinician:
+        raise HTTPException(status_code=404, detail="Clinician not found")
+    appointment = Appointment(patient_id=patient.id, org_id=clinician.org_id, doctor_id=clinician.id,
+                              time=req.time, status="requested", reason=req.reason.strip())
+    db.add(appointment)
+    db.commit()
+    db.refresh(appointment)
+    return appointment_payload(appointment, db)
+
+@router.post("/patient/appointments/{appointment_id}/reschedule")
+def reschedule_appointment(appointment_id: uuid.UUID, req: AppointmentRequest, patient: CurrentPatient, db: SessionDep):
+    appointment = db.query(Appointment).filter(Appointment.id == appointment_id,
+        Appointment.patient_id == patient.id, Appointment.status != "cancelled").first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    if req.time <= datetime.now(req.time.tzinfo):
+        raise HTTPException(status_code=422, detail="Choose a future date and time")
+    clinician = db.query(Staff).filter(Staff.id == req.doctor_id).first()
+    if not clinician:
+        raise HTTPException(status_code=404, detail="Clinician not found")
+    appointment.time = req.time
+    appointment.doctor_id = clinician.id
+    appointment.org_id = clinician.org_id
+    appointment.status = "requested"
+    appointment.reason = req.reason.strip()
+    db.commit()
+    db.refresh(appointment)
+    return appointment_payload(appointment, db)
+
+@router.delete("/patient/appointments/{appointment_id}")
+def cancel_appointment(appointment_id: uuid.UUID, patient: CurrentPatient, db: SessionDep):
+    appointment = db.query(Appointment).filter(Appointment.id == appointment_id,
+        Appointment.patient_id == patient.id, Appointment.status != "cancelled").first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    appointment.status = "cancelled"
+    db.commit()
+    return {"status": "cancelled", "id": str(appointment.id)}
 
 def medication_name(record: Record) -> str:
     value = record.fhir.get("medicationCodeableConcept", {}).get("text")
@@ -18,19 +93,15 @@ def medication_name(record: Record) -> str:
         value = medication.get("text", "Unknown") if isinstance(medication, dict) else medication
     return str(value or "Unknown")
 
-def clinician_grant(user: User, db: Session, patient_id: uuid.UUID):
+def clinician_access(user: User, db: Session, patient_id: uuid.UUID):
     if user.role not in ["hospital_staff", "org_admin"]:
         raise HTTPException(status_code=403, detail="Clinician access required")
     staff = db.query(Staff).filter(Staff.user_id == user.id).first()
     if not staff:
         raise HTTPException(status_code=403, detail="Staff record not found")
-    consent = db.query(Consent).filter(
-        Consent.patient_id == patient_id, Consent.org_id == staff.org_id,
-        Consent.status == "active", Consent.expires_at > datetime.now(timezone.utc)
-    ).order_by(Consent.expires_at.desc()).first()
-    if not consent:
-        raise HTTPException(status_code=403, detail="Active patient consent is required")
-    return staff, consent
+    if not db.query(Patient.id).filter(Patient.id == patient_id).first():
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return staff
 
 @router.get("/overview")
 def get_overview(patient: CurrentPatient, db: SessionDep):
@@ -143,17 +214,29 @@ def get_providers(patient: CurrentPatient, db: SessionDep):
         src = r.source_name
         if src not in providers:
             providers[src] = []
-        providers[src].append(r.recorded_date)
+        providers[src].append(r)
         
     result = []
     for src, dates in providers.items():
-        dates.sort()
-        last_visit = dates[-1]
+        dates.sort(key=lambda record: record.recorded_date)
+        last_visit = dates[-1].recorded_date
         gap_days = (date.today() - last_visit).days
+        areas = sorted({
+            "Eye care" if "eye" in src.lower() or "retinal" in str(r.fhir).lower() else
+            "Dental care" if "dental" in src.lower() or "tooth" in str(r.fhir).lower() else
+            "Laboratory" if r.type == "observation" else
+            "Pharmacy" if "pharmacy" in src.lower() else
+            "Imaging" if "imaging" in src.lower() else
+            "Primary and urgent care" if r.type in {"encounter", "condition"} else
+            "Clinical care"
+            for r in providers[src]
+        })
         result.append({
             "facility": src,
             "last_visit": last_visit,
-            "gap_days": gap_days
+            "gap_days": gap_days,
+            "record_count": len(dates),
+            "care_areas": areas,
         })
     return {"providers": result}
 
@@ -194,9 +277,7 @@ class ClinicianNoteReq(BaseModel):
 def add_clinician_note(user: CurrentUser, db: SessionDep, req: ClinicianNoteReq):
     if req.type != "report" or not req.note.strip():
         raise HTTPException(status_code=422, detail="A non-empty clinical note is required")
-    staff, consent = clinician_grant(user, db, req.patient_id)
-    if "report" not in consent.scope.split(","):
-        raise HTTPException(status_code=403, detail="Consent does not include clinical notes")
+    staff = clinician_access(user, db, req.patient_id)
         
     record = Record(
         patient_id=req.patient_id,
@@ -210,6 +291,8 @@ def add_clinician_note(user: CurrentUser, db: SessionDep, req: ClinicianNoteReq)
         created_by_staff_id=staff.id
     )
     db.add(record)
+    db.add(AccessEvent(patient_id=req.patient_id, org_id=staff.org_id, staff_id=staff.id,
+        purpose="Added clinical note", scope="report", records_viewed=0))
     db.commit()
     db.refresh(record)
     return {"status": "success", "record_id": record.id}
@@ -218,9 +301,7 @@ def add_clinician_note(user: CurrentUser, db: SessionDep, req: ClinicianNoteReq)
 def check_test(user: CurrentUser, db: SessionDep, name: str, patient_id: uuid.UUID):
     if not name.strip():
         raise HTTPException(status_code=422, detail="Test name is required")
-    staff, consent = clinician_grant(user, db, patient_id)
-    if "observation" not in consent.scope.split(","):
-        raise HTTPException(status_code=403, detail="Consent does not include lab results")
+    staff = clinician_access(user, db, patient_id)
     records = db.query(Record).filter(Record.patient_id == patient_id, Record.type == "observation", Record.verified.is_(True), Record.status != "entered_in_error").all()
     found = []
     for r in records:
@@ -234,12 +315,9 @@ def check_test(user: CurrentUser, db: SessionDep, name: str, patient_id: uuid.UU
 
 @router.get("/clinician/checks/drug")
 def check_drug(user: CurrentUser, db: SessionDep, name: str, patient_id: uuid.UUID):
-    staff, consent = clinician_grant(user, db, patient_id)
-    allowed = set(consent.scope.split(","))
-    if not allowed.intersection({"medication", "allergy"}):
-        raise HTTPException(status_code=403, detail="Consent does not include medications or allergies")
+    staff = clinician_access(user, db, patient_id)
     
-    allergies = db.query(Record).filter(Record.patient_id == patient_id, Record.type == "allergy", Record.verified.is_(True), Record.status != "entered_in_error").all() if "allergy" in allowed else []
+    allergies = db.query(Record).filter(Record.patient_id == patient_id, Record.type == "allergy", Record.verified.is_(True), Record.status != "entered_in_error").all()
     conflict = False
     allergy_details = []
     allergy_maps = db.query(AllergyDrugMap).all()
@@ -251,7 +329,7 @@ def check_drug(user: CurrentUser, db: SessionDep, name: str, patient_id: uuid.UU
                 allergy_details.append(f"Recorded {mapping.allergen} allergy may relate to {mapping.drug_or_class}.")
                 break
             
-    meds = db.query(Record).filter(Record.patient_id == patient_id, Record.type == "medication", Record.verified.is_(True), Record.status != "entered_in_error").all() if "medication" in allowed else []
+    meds = db.query(Record).filter(Record.patient_id == patient_id, Record.type == "medication", Record.verified.is_(True), Record.status != "entered_in_error").all()
     medication_match = False
     interaction_details = []
     interaction_rules = db.query(MedicationInteraction).all()
@@ -265,7 +343,7 @@ def check_drug(user: CurrentUser, db: SessionDep, name: str, patient_id: uuid.UU
             interaction_details.append({"severity": rule.severity, "description": rule.description})
 
     db.add(AccessEvent(patient_id=patient_id, org_id=staff.org_id, staff_id=staff.id,
-                       purpose="Medication record check", scope=",".join(sorted(allowed)),
+                       purpose="Checked patient medications and allergies", scope="medication,allergy",
                        records_viewed=len(allergies) + len(meds)))
     db.commit()
             
