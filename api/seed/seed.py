@@ -6,11 +6,12 @@ import logging
 import uuid
 from datetime import date, timedelta
 import random
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.models import Organization, Staff
+from app.models import Organization, Staff, CorrectionRequest, RecordVersion, Notification
 from app.models import (
     AllergyDrugMap,
     MedicationInteraction,
@@ -257,8 +258,71 @@ def seed_patient_e(db: Session, p: Patient) -> None:
     ]
     db.add_all(items)
 
+def seed_ownership_samples(db: Session, p: Patient) -> None:
+    """Seed deterministic ownership examples for the primary synthetic patient."""
+    from app.models import AuditLog
+    orgs = db.query(Organization).all()
+    for record in db.query(Record).filter(Record.patient_id == p.id).all():
+        if record.source_type == "seed" and not record.source_org_id:
+            source = record.source_name.casefold()
+            org = next((o for o in orgs if o.name.casefold() in source), None)
+            if org:
+                record.source_org_id = org.id
+    pending_upload = db.query(Record).filter(Record.patient_id == p.id,
+        Record.source_type == "upload", Record.verified.is_(False)).first()
+    if pending_upload:
+        pending_upload.source_name = "External Provider Archive"
+        pending_upload.patient_confirmed = True
+    if db.query(Record).filter(Record.patient_id == p.id, Record.source_type == "self_reported").count() == 0:
+        db.add_all([
+            Record(patient_id=p.id, type="observation", fhir={"resourceType":"PatientReported","code":{"text":"Home blood pressure"},"note":"132/84 mmHg","self_reported":True,"reported_kind":"observation"}, source_name="Patient-reported", source_type="self_reported", recorded_date=date.today(), verified=False, patient_confirmed=True),
+            Record(patient_id=p.id, type="observation", fhir={"resourceType":"PatientReported","code":{"text":"Occasional morning headache"},"note":"Self-reported symptom","self_reported":True,"reported_kind":"symptom"}, source_name="Patient-reported", source_type="self_reported", recorded_date=date.today(), verified=False, patient_confirmed=True),
+            Record(patient_id=p.id, type="medication", fhir={"resourceType":"PatientReported","code":{"text":"Vitamin D supplement"},"note":"Patient reports taking weekly","self_reported":True,"reported_kind":"medication"}, source_name="Patient-reported", source_type="self_reported", recorded_date=date.today(), verified=False, patient_confirmed=True),
+        ])
+    org = next((o for o in orgs if o.registration_no == "HOSP-KAV-001"), None)
+    if not org:
+        return
+    doctor = db.query(Staff).filter(Staff.org_id == org.id, Staff.role == "doctor").first()
+    if db.query(CorrectionRequest).filter(CorrectionRequest.patient_id == p.id).count() == 0:
+        source_record = db.query(Record).filter(Record.patient_id == p.id,
+            Record.source_org_id == org.id, Record.verified.is_(True)).first()
+        if source_record:
+            label = source_record.fhir.get("code", {}).get("text", source_record.type)
+            db.add(CorrectionRequest(patient_id=p.id, record_id=source_record.id,
+                source_org_id=org.id, request_type="record", field_name="fhir.code.text",
+                believed_correct=label, reason="Please review this synthetic demo correction request."))
+        amended = Record(patient_id=p.id, type="condition",
+            fhir={"resourceType":"Condition","code":{"text":"Essential hypertension"}},
+            source_name=org.name, source_type="seed", source_org_id=org.id,
+            recorded_date=date(2021,8,3), verified=True, status="amended", current_version=2)
+        db.add(amended)
+        db.flush()
+        db.add_all([
+            RecordVersion(record_id=amended.id, version=1,
+                data={"type":"condition","fhir":{"resourceType":"Condition","code":{"text":"Essential hypertenson"}},"source_name":org.name,"recorded_date":"2021-08-03","status":"active"},
+                changed_by_staff_id=doctor.id if doctor else None, org_id=org.id,
+                reason="Original entry before accepted transcription correction"),
+            RecordVersion(record_id=amended.id, version=2,
+                data={"type":"condition","fhir":amended.fhir,"source_name":org.name,"recorded_date":"2021-08-03","status":"amended"},
+                changed_by_staff_id=doctor.id if doctor else None, org_id=org.id,
+                reason="Accepted correction: transcription spelling error"),
+            CorrectionRequest(patient_id=p.id, record_id=amended.id, source_org_id=org.id,
+                request_type="record", field_name="fhir.code.text", believed_correct="Essential hypertension",
+                reason="Synthetic example of an accepted correction request", status="accepted",
+                reviewed_by_staff_id=doctor.id if doctor else None,
+                resolution_reason="Accepted after checking the source document."),
+            Notification(patient_id=p.id, title="A health record was amended",
+                message="Kaveri Multispeciality Hospital corrected a transcription error in a synthetic demo record."),
+            AuditLog(patient_id=p.id, actor_type="clinician", actor_label="Dr. Ramesh Iyer",
+                action="Record amended", detail="Kaveri Multispeciality Hospital; transcription spelling error"),
+        ])
+
 def run() -> None:
-    generate_all()
+    sample_dir = Path(__file__).resolve().parent / "samples"
+    expected_samples = {"discharge_summary.pdf", "inhaler_prescription.pdf", "lab_hba1c.pdf",
+                        "lab_lipid.pdf", "prescription_amoxicillin.pdf", "prescription_metformin.pdf"}
+    if not all((sample_dir / name).exists() for name in expected_samples):
+        generate_all()
     db = SessionLocal()
     try:
         seed_orgs_and_staff(db)
@@ -333,6 +397,7 @@ def run() -> None:
         seed_patient_c(db, c)
         seed_patient_d(db, d)
         seed_patient_e(db, e)
+        seed_ownership_samples(db, a)
         db.commit()
         n = db.query(Record).count()
         log.info("seed_complete patients=%s records=%s", 5, n)

@@ -1,27 +1,6 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { fetchAPI } from "@/lib/api";
-
-export default function HospitalDashboard() {
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    fetchAPI('/me').then(res => {
-      if (res && res.user) {
-        setUser(res.user);
-      }
-    });
-  }, []);
-
-  return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold text-slate-800">Hospital Staff Portal</h1>
-      <p className="mt-2 text-slate-600">Welcome, {user?.name}.</p>
-      <div className="mt-8 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-700">Recent Patients</h2>
-        <p className="text-sm text-slate-500 mt-2">No patients assigned yet.</p>
-      </div>
-    </div>
-  );
-}
+'use client';
+import { useEffect,useState } from 'react';
+import Link from 'next/link';
+import { fetchAPI } from '@/lib/api';
+import { Search,ShieldCheck,ArrowRight } from 'lucide-react';
+export default function HospitalDashboard(){const [name,setName]=useState('');const [error,setError]=useState('');useEffect(()=>{fetchAPI('/me').then(r=>setName(r.user?.name||'')).catch(e=>setError(e.message));},[]);return <main className="space-y-6"><section className="rounded-3xl bg-emerald-900 p-7 text-white"><p className="text-sm font-semibold uppercase tracking-widest text-emerald-200">Clinician workspace</p><h1 className="mt-2 text-3xl font-bold">Welcome{name?`, ${name}`:''}</h1><p className="mt-2 max-w-2xl text-emerald-100">Search for patients who have granted your organization access to their verified health records.</p><Link href="/hospital/search" className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 font-semibold text-emerald-950 hover:bg-emerald-50">Find a patient <ArrowRight className="h-4 w-4"/></Link></section>{error&&<p role="alert" className="rounded-xl bg-rose-50 p-3 text-rose-800">{error}</p>}<div className="grid gap-4 md:grid-cols-2"><Link href="/hospital/search" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-emerald-300"><Search className="h-5 w-5 text-emerald-700"/><h2 className="mt-3 font-semibold">Patient search</h2><p className="mt-1 text-sm text-slate-600">Find patient records shared with your organization.</p></Link><Link href="/hospital/settings" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-emerald-300"><ShieldCheck className="h-5 w-5 text-emerald-700"/><h2 className="mt-3 font-semibold">Data integrations</h2><p className="mt-1 text-sm text-slate-600">Review supported demo ingestion formats and access requirements.</p></Link></div></main>}

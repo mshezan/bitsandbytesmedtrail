@@ -43,7 +43,7 @@ class ExtractedData(BaseModel):
 def extract_text_from_file(file_path: str, mime_type: str) -> str:
     text = ""
     if "pdf" in mime_type:
-        pages = convert_from_path(file_path)
+        pages = convert_from_path(file_path, first_page=1, last_page=10)
         for page in pages:
             text += pytesseract.image_to_string(page) + "\n"
     elif "image" in mime_type:

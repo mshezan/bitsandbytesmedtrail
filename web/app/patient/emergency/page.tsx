@@ -13,12 +13,21 @@ export default function EmergencyQRPage() {
   async function handleGenerate() {
     setLoading(true);
     try {
-      const res = await fetchAPI("/patient/emergency", { method: "POST" });
+      const res = await fetchAPI("/emergency", { method: "POST" });
       setUrl(res.url);
     } catch (err: any) {
       alert(err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleRevoke() {
+    try {
+      await fetchAPI("/emergency/revoke", { method: "POST" });
+      setUrl(null);
+    } catch (err: any) {
+      alert(err.message);
     }
   }
 
@@ -47,6 +56,7 @@ export default function EmergencyQRPage() {
           >
             Hide QR Code
           </button>
+          <button onClick={handleRevoke} className="mt-3 text-sm font-medium text-red-700 underline">Revoke this card</button>
         </div>
       ) : (
         <button 

@@ -3,10 +3,18 @@
 @tailwind utilities;
 
 html {
-  font-size: 18px;
+  font-size: 16px;
+  color-scheme: light;
 }
 
 body {
-  color: #1c2430;
-  background: #f6f4ef;
+  color: #17212b;
+  background: #f7f9f8;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button, input, select, textarea { font: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 3px solid rgba(13, 148, 110, .28);
+  outline-offset: 2px;
 }

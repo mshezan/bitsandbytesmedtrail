@@ -72,6 +72,11 @@ class Patient(Base):
     city: Mapped[str | None] = mapped_column(String(100))
     state: Mapped[str | None] = mapped_column(String(100))
     language: Mapped[str | None] = mapped_column(String(64))
+    address: Mapped[str | None] = mapped_column(Text)
+    preferred_hospital: Mapped[str | None] = mapped_column(String(200))
+    notification_preferences: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    privacy_preferences: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    profile_photo_url: Mapped[str | None] = mapped_column(String(512))
 
     user: Mapped[User] = relationship(back_populates="patient")
     records: Mapped[list["Record"]] = relationship(back_populates="patient")
@@ -89,9 +94,10 @@ class Record(Base):
             name="ck_records_type",
         ),
         CheckConstraint(
-            "source_type IN ('upload','connector','seed')",
+            "source_type IN ('upload','connector','seed','self_reported')",
             name="ck_records_source_type",
         ),
+        CheckConstraint("status IN ('active','amended','entered_in_error')", name="ck_records_status"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -103,12 +109,87 @@ class Record(Base):
     recorded_date: Mapped[date] = mapped_column(Date, nullable=False)
     confidence: Mapped[float | None] = mapped_column(Float)
     verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    patient_confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    verified_by_staff_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("staff.id"))
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
+    current_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    hidden_from_shares: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     file_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("files.id"))
     source_org_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("organizations.id"))
     created_by_staff_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("staff.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     patient: Mapped[Patient] = relationship(back_populates="records")
+
+
+class RecordVersion(Base):
+    __tablename__ = "record_versions"
+    __table_args__ = (UniqueConstraint("record_id", "version", name="uq_record_version"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    record_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("records.id"), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    data: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    changed_by_staff_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("staff.id"))
+    org_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("organizations.id"))
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CorrectionRequest(Base):
+    __tablename__ = "correction_requests"
+    __table_args__ = (
+        CheckConstraint("request_type IN ('record','identity')", name="ck_correction_request_type"),
+        CheckConstraint("status IN ('open','under_review','accepted','rejected')", name="ck_correction_request_status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patients.id"), nullable=False)
+    record_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("records.id"))
+    source_org_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    request_type: Mapped[str] = mapped_column(String(32), nullable=False, default="record")
+    field_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    believed_correct: Mapped[str] = mapped_column(Text, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    attachment_file_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("files.id"))
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="open")
+    reviewed_by_staff_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("staff.id"))
+    resolution_reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class PatientRecordNote(Base):
+    __tablename__ = "patient_record_notes"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patients.id"), nullable=False)
+    record_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("records.id"), nullable=False)
+    note: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PrivacyRequest(Base):
+    __tablename__ = "privacy_requests"
+    __table_args__ = (CheckConstraint("request_type IN ('deletion','restriction')", name="ck_privacy_request_type"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patients.id"), nullable=False)
+    request_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="open")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patients.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class FileObject(Base):

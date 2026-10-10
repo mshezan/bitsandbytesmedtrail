@@ -5,7 +5,7 @@ import { Shell } from './Shell';
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   
-  if (pathname === '/login' || pathname === '/' || pathname.startsWith('/hospital') || pathname.startsWith('/api')) {
+  if (pathname === '/login' || pathname === '/' || pathname.startsWith('/hospital') || pathname.startsWith('/api') || pathname.startsWith('/shared/') || pathname.startsWith('/er/')) {
     return <>{children}</>;
   }
   

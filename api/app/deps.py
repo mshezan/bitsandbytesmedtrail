@@ -1,4 +1,5 @@
 from typing import Generator, Annotated
+import uuid
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
@@ -30,9 +31,10 @@ def get_current_user(db: SessionDep, token: TokenDep) -> User:
     )
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
-        if user_id is None:
+        subject: str = payload.get("sub")
+        if subject is None:
             raise credentials_exception
+        user_id = uuid.UUID(subject)
     except (JWTError, ValidationError, Exception):
         raise credentials_exception
         

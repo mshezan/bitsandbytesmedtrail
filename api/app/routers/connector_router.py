@@ -24,13 +24,19 @@ def sync_connector(name: str, patient: CurrentPatient, db: SessionDep):
     for raw in raw_records:
         fhir_data = connector.normalize(raw)
         
-        # Check if record already exists to prevent duplicates (naive implementation)
-        # In MVP, we just insert it
+        source_name = name.replace("-", " ").title()
+        duplicate = db.query(Record.id).filter(
+            Record.patient_id == patient.id, Record.type == raw.type,
+            Record.source_name == source_name, Record.recorded_date == raw.recorded_date,
+            Record.fhir == fhir_data
+        ).first()
+        if duplicate:
+            continue
         new_record = Record(
             patient_id=patient.id,
             type=raw.type,
             fhir=fhir_data,
-            source_name=name.replace("-", " ").title(),
+            source_name=source_name,
             source_type="connector",
             recorded_date=raw.recorded_date,
             verified=True,  # Usually from clinic they might be auto-verified

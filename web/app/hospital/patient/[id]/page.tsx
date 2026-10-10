@@ -1,136 +1,27 @@
-"use client";
+'use client';
+import { useState } from 'react';
+import { useParams } from 'next/navigation';
+import { fetchAPI } from '@/lib/api';
+import { Activity, AlertTriangle, Lock, Pill, Search, ShieldCheck } from 'lucide-react';
 
-import { useState, useEffect } from "react";
-import { fetchAPI } from "@/lib/api";
-import { AlertCircle, Lock, ShieldAlert, FileText, CheckCircle2 } from "lucide-react";
-
-export default function PatientView({ params }: { params: { id: string } }) {
-  const [patient, setPatient] = useState<any>(null);
-  const [accessGranted, setAccessGranted] = useState(false);
-  const [purpose, setPurpose] = useState("");
-
-  const handleAccess = async (selectedPurpose: string) => {
-    try {
-      await fetchAPI(`/hospital/patient/${params.id}/access?purpose=${encodeURIComponent(selectedPurpose)}`, { method: "POST" });
-      setPurpose(selectedPurpose);
-      setAccessGranted(true);
-      
-      const data = await fetchAPI(`/hospital/patient/${params.id}`);
-      setPatient(data);
-    } catch (e) {
-      alert("Failed to log access.");
-    }
-  };
-
-  if (!accessGranted) {
-    return (
-      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
-          <div className="bg-blue-600 p-6 text-white text-center">
-            <Lock className="w-12 h-12 mx-auto mb-4 opacity-80" />
-            <h2 className="text-xl font-bold">Purpose of Access</h2>
-            <p className="text-blue-100 text-sm mt-2">Under the DPDP Act, you must declare the purpose of accessing this medical record.</p>
-          </div>
-          <div className="p-6 space-y-3">
-            {["OPD Consult", "Admission / IPD", "Emergency", "Lab / Diagnostic", "Follow-up"].map((p) => (
-              <button
-                key={p}
-                onClick={() => handleAccess(p)}
-                className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 hover:border-blue-600 hover:bg-blue-50 font-medium text-slate-700 transition"
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-          <div className="bg-slate-50 p-4 text-xs text-slate-500 text-center border-t border-slate-100">
-            This action will be logged in the patient's Audit Trail and they will be notified.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!patient) return <div className="p-8">Loading...</div>;
-
-  return (
-    <div className="flex h-full">
-      {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-8">
-        <div className="flex items-start justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-              {patient.name}
-            </h1>
-            <div className="text-slate-500 mt-2 flex items-center gap-4 text-sm">
-              <span>ABHA: {patient.abha}</span>
-              <span>•</span>
-              <span>{patient.age}y</span>
-              <span>•</span>
-              <span className="text-red-600 font-bold flex items-center gap-1"><ShieldAlert className="w-4 h-4" /> Blood: {patient.blood_group || 'Unknown'}</span>
-            </div>
-          </div>
-          <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" /> Active Consent: {purpose}
-          </div>
-        </div>
-
-        {/* Mock Tabs */}
-        <div className="flex gap-6 border-b border-slate-200 mb-8">
-          {["Summary", "Timeline", "Medications", "Labs", "Reports & Documents"].map((tab, i) => (
-            <button key={tab} className={`pb-3 font-medium text-sm ${i === 0 ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-800'}`}>
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        {/* Summary Content */}
-        <div className="grid grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2"><AlertCircle className="w-4 h-4 text-red-500"/> Allergies</h3>
-            <div className="flex flex-wrap gap-2">
-              {patient.allergies.length > 0 ? patient.allergies.map((a: string, i: number) => (
-                <span key={i} className="bg-red-50 text-red-700 border border-red-200 px-3 py-1 rounded-full text-sm font-medium">{a}</span>
-              )) : <span className="text-slate-500 text-sm">No known allergies</span>}
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Chronic Conditions</h3>
-            <ul className="list-disc pl-5 text-sm text-slate-700 space-y-1">
-              {patient.conditions.length > 0 ? patient.conditions.map((c: string, i: number) => (
-                <li key={i}>{c}</li>
-              )) : <li className="text-slate-500">None documented</li>}
-            </ul>
-          </div>
-          
-          <div className="col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Active Medications</h3>
-            <div className="space-y-3">
-              {patient.medications.length > 0 ? patient.medications.map((m: string, i: number) => (
-                <div key={i} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                  <span className="font-medium text-slate-800">{m}</span>
-                  <span className="text-xs text-slate-500">Reconciled from unified record</span>
-                </div>
-              )) : <div className="text-slate-500 text-sm">No active medications</div>}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Clinical Checks Panel (Sticky Right) */}
-      <div className="w-80 bg-slate-50 border-l border-slate-200 p-6 flex flex-col h-full">
-        <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-6">Clinical Checks</h2>
-        
-        <div className="mb-6">
-          <label className="text-xs font-semibold text-slate-600 mb-2 block">Before you order (Duplicate Check)</label>
-          <input type="text" placeholder="e.g. HbA1c" className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:border-blue-600" />
-        </div>
-
-        <div>
-          <label className="text-xs font-semibold text-slate-600 mb-2 block">Before you prescribe (Interaction Check)</label>
-          <input type="text" placeholder="e.g. Aspirin" className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:border-blue-600" />
-        </div>
-      </div>
-    </div>
-  );
+type Pending = {id:string;type:string;fhir:any;source_name:string;recorded_date:string};
+type Amendable={id:string;type:string;fhir:any;recorded_date:string;status:string};
+type Summary = {id:string;name:string;abha?:string;age:number;blood_group?:string;allergies:string[];conditions:string[];medications:string[];observations:{date:string;name:string;value?:number;unit?:string}[];records_count:number;scope:string[];pending_uploads:Pending[];can_amend:boolean;amendable_records:Amendable[]};
+const card='rounded-2xl border border-slate-200 bg-white p-5 shadow-sm';
+export default function PatientView(){
+ const {id}=useParams<{id:string}>(); const [patient,setPatient]=useState<Summary|null>(null); const [purpose,setPurpose]=useState(''); const [error,setError]=useState(''); const [test,setTest]=useState(''); const [testResult,setTestResult]=useState<any>(null); const [drug,setDrug]=useState(''); const [drugResult,setDrugResult]=useState<any>(null); const [busy,setBusy]=useState(false); const [editing,setEditing]=useState<Amendable|null>(null); const [draft,setDraft]=useState(''); const [amendReason,setAmendReason]=useState(''); const [amendStatus,setAmendStatus]=useState('amended');
+ async function access(selected:string){setBusy(true);setError('');try{await fetchAPI(`/hospital/patient/${id}/access?purpose=${encodeURIComponent(selected)}`,{method:'POST'});setPatient(await fetchAPI(`/hospital/patient/${id}`));setPurpose(selected);}catch(e:any){setError(e.message);}finally{setBusy(false);}}
+ async function checkTest(){setError('');try{setTestResult(await fetchAPI(`/clinician/checks/test?name=${encodeURIComponent(test)}&patient_id=${id}`));}catch(e:any){setError(e.message);}}
+ async function checkDrug(){setError('');try{setDrugResult(await fetchAPI(`/clinician/checks/drug?name=${encodeURIComponent(drug)}&patient_id=${id}`));}catch(e:any){setError(e.message);}}
+ async function verifyUpload(recordId:string){setError('');try{await fetchAPI(`/hospital/patient/${id}/records/${recordId}/verify-upload`,{method:'POST'});setPatient(await fetchAPI(`/hospital/patient/${id}`));}catch(e:any){setError(e.message);}}
+ async function saveAmendment(e:React.FormEvent){e.preventDefault();if(!editing)return;setError('');try{let fhir;try{fhir=JSON.parse(draft);}catch{throw new Error('Record data must be valid JSON.');}await fetchAPI(`/hospital/records/${editing.id}/amend`,{method:'POST',body:JSON.stringify({fhir,reason:amendReason,status:amendStatus})});setPatient(await fetchAPI(`/hospital/patient/${id}`));setEditing(null);setDraft('');setAmendReason('');}catch(e:any){setError(e.message);}}
+ if(!patient)return <main className="max-w-xl"><section className={card}><Lock className="h-6 w-6 text-emerald-800"/><h1 className="mt-4 text-2xl font-bold">Request record access</h1><p className="mt-2 text-slate-600">Access is available only with active, scoped patient consent.</p><p className="mt-4 text-sm font-semibold">Select the care purpose:</p><div className="mt-3 grid gap-2">{['OPD consultation','Admission / inpatient care','Emergency','Lab / diagnostics','Follow-up'].map(p=><button disabled={busy} key={p} onClick={()=>access(p)} className="rounded-xl border border-slate-200 px-4 py-3 text-left font-medium hover:border-emerald-700 disabled:opacity-50">{p}</button>)}</div>{error&&<p role="alert" className="mt-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}<p className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-500">The access purpose and subsequent record views are logged.</p></section></main>;
+ return <main className="space-y-6"><header className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-sm font-semibold uppercase tracking-wider text-emerald-700">Authorized clinical summary</p><h1 className="mt-1 text-3xl font-bold">{patient.name}</h1><p className="mt-2 text-sm text-slate-600">{patient.age} years · ABHA {patient.abha||'not recorded'} · Access purpose: {purpose}</p></div><div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"><ShieldCheck className="mr-2 inline h-4 w-4"/>Active consent · {patient.records_count} verified records</div></header>
+ {error&&<p role="alert" className="rounded-xl bg-rose-50 p-3 text-rose-800">{error}</p>}
+ {!!patient.pending_uploads?.length&&<section className="rounded-2xl border border-amber-200 bg-white p-5"><h2 className="font-semibold">Patient uploads awaiting verification</h2><p className="mt-1 text-sm text-slate-600">External-provider documents confirmed by the patient, still unverified.</p><div className="mt-3 space-y-2">{patient.pending_uploads.map(r=><div key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-50 p-3"><div><p className="font-medium capitalize">{r.type}: {r.fhir?.code?.text||r.fhir?.medicationCodeableConcept?.text||r.fhir?.observation||'Uploaded detail'}</p><p className="text-sm text-slate-600">{r.source_name} · {r.recorded_date}</p></div><button onClick={()=>verifyUpload(r.id)} className="rounded-lg bg-emerald-800 px-3 py-2 text-sm font-semibold text-white">Mark verified</button></div>)}</div></section>}
+ {patient.can_amend&&patient.amendable_records.length>0&&<section className={card}><h2 className="font-semibold">Records issued by this organization</h2><p className="mt-1 text-sm text-slate-600">Amendments are versioned and require a reason. Previous versions stay in the record history.</p><div className="mt-3 space-y-2">{patient.amendable_records.map(r=><div key={r.id} className="rounded-xl border border-slate-200 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium capitalize">{r.type}: {r.fhir?.code?.text||r.fhir?.medicationCodeableConcept?.text||r.fhir?.medication||'Clinical record'} · {r.recorded_date}</p><button onClick={()=>{setEditing(r);setDraft(JSON.stringify(r.fhir,null,2));setAmendStatus('amended');}} className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm">Amend record</button></div>{editing?.id===r.id&&<form onSubmit={saveAmendment} className="mt-3 space-y-2"><label className="block text-sm font-medium">Corrected FHIR data<textarea required value={draft} onChange={e=>setDraft(e.target.value)} rows={7} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs"/></label><label className="block text-sm font-medium">Reason<textarea required minLength={3} value={amendReason} onChange={e=>setAmendReason(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"/></label><label className="block text-sm font-medium">Resulting status<select value={amendStatus} onChange={e=>setAmendStatus(e.target.value)} className="mt-1 rounded-lg border border-slate-300 px-3 py-2"><option value="amended">Amended</option><option value="entered_in_error">Entered in error</option></select></label><div className="flex gap-2"><button className="rounded-lg bg-emerald-800 px-3 py-2 text-sm font-semibold text-white">Save version</button><button type="button" onClick={()=>setEditing(null)} className="rounded-lg border px-3 py-2 text-sm">Cancel</button></div></form>}</div>)}</div></section>}
+ <div className="grid gap-4 sm:grid-cols-2"><section className={card}><h2 className="flex items-center gap-2 font-semibold"><AlertTriangle className="h-5 w-5 text-rose-700"/>Allergies</h2><div className="mt-3 flex flex-wrap gap-2">{patient.allergies.length?patient.allergies.map((x,i)=><span key={i} className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-900">{x}</span>):<span className="text-sm text-slate-500">No verified allergy record in the granted scope.</span>}</div></section><section className={card}><h2 className="flex items-center gap-2 font-semibold"><Activity className="h-5 w-5 text-emerald-800"/>Conditions</h2><div className="mt-3 flex flex-wrap gap-2">{patient.conditions.length?patient.conditions.map((x,i)=><span key={i} className="rounded-lg bg-slate-100 px-3 py-2 text-sm">{x}</span>):<span className="text-sm text-slate-500">No verified conditions in the granted scope.</span>}</div></section>
+ <section className={`${card} sm:col-span-2`}><h2 className="flex items-center gap-2 font-semibold"><Pill className="h-5 w-5 text-emerald-800"/>Medication records</h2><div className="mt-3 grid gap-2 sm:grid-cols-2">{patient.medications.length?patient.medications.map((x,i)=><div key={i} className="rounded-lg bg-slate-50 p-3 text-sm">{x}</div>):<span className="text-sm text-slate-500">No verified medication record in the granted scope.</span>}</div></section>
+ <section className={`${card} sm:col-span-2`}><h2 className="font-semibold">Lab observations</h2><div className="mt-3 divide-y divide-slate-100">{patient.observations.map((x,i)=><div key={i} className="flex justify-between gap-3 py-2 text-sm"><span>{x.name}: {x.value??'value not captured'} {x.unit||''}</span><time className="text-slate-500">{x.date}</time></div>)}{!patient.observations.length&&<p className="text-sm text-slate-500">No lab records in the granted scope.</p>}</div></section></div>
+ <section className="grid gap-4 lg:grid-cols-2"><div className={card}><h2 className="font-semibold">Check prior test</h2><div className="mt-3 flex gap-2"><input value={test} onChange={e=>setTest(e.target.value)} placeholder="Test name" className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2"/><button disabled={!test} onClick={checkTest} className="rounded-lg bg-emerald-800 px-3 text-white disabled:opacity-40"><Search className="h-4 w-4"/></button></div>{testResult&&<p className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm">{testResult.previously_done?`${testResult.count} matching prior result(s) found.`:'No matching prior test found.'} Verify dates and clinical context before ordering.</p>}</div><div className={card}><h2 className="font-semibold">Check medication and allergy records</h2><div className="mt-3 flex gap-2"><input value={drug} onChange={e=>setDrug(e.target.value)} placeholder="Medication name" className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2"/><button disabled={!drug} onClick={checkDrug} className="rounded-lg bg-emerald-800 px-3 text-white disabled:opacity-40"><Search className="h-4 w-4"/></button></div>{drugResult&&<div className="mt-3 rounded-lg bg-amber-50 p-3 text-sm">{drugResult.allergy_conflict&&drugResult.allergy_details.map((d:string,i:number)=><p key={i}>{d}</p>)}{drugResult.interaction_warning&&drugResult.interaction_details.map((d:any,i:number)=><p key={i}>Possible interaction ({d.severity}): {d.description}</p>)}{drugResult.current_medication_match&&<p>This medication is already present in the patient&apos;s record.</p>}{!drugResult.allergy_conflict&&!drugResult.interaction_warning&&!drugResult.current_medication_match&&<p>No matching allergy or medication rule was found.</p>}<p className="mt-2 text-xs text-slate-600">Automated record checks do not replace clinical judgment.</p></div>}</div></section><p className="text-xs text-slate-500">Only verified records covered by the active grant are displayed. Confirm all details with the patient.</p></main>;
 }

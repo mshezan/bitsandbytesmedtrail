@@ -5,9 +5,9 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#1c2430",
-        mist: "#f6f4ef",
-        sage: "#2f6f5e",
+        ink: "#17212b",
+        mist: "#f7f9f8",
+        sage: "#047857",
       },
     },
   },

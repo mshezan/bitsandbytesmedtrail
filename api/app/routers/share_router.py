@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import uuid
 import hashlib
@@ -9,13 +9,14 @@ from datetime import datetime, timedelta, timezone
 from app.deps import CurrentPatient, SessionDep
 from app.models import Share, Record, AuditLog, Patient, User
 from app.auth import get_password_hash, verify_password
+from app.config import settings
 
 router = APIRouter(tags=["shares"])
 
 class CreateShare(BaseModel):
-    scope: dict
-    expires_in_hours: int
-    pin: Optional[str] = None
+    scope: dict = Field(default_factory=lambda: {"types": ["condition", "medication", "allergy", "observation"]})
+    expires_in_hours: int = Field(default=24, ge=1, le=720)
+    pin: Optional[str] = Field(default=None, min_length=4, max_length=64)
 
 def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
@@ -34,6 +35,10 @@ def log_audit(db, patient_id, actor_type, actor_label, action, share_id=None, de
 
 @router.post("/shares")
 def create_share(req: CreateShare, patient: CurrentPatient, db: SessionDep, request: Request):
+    allowed = {"condition", "medication", "allergy", "observation", "encounter", "report"}
+    types = req.scope.get("types", [])
+    if not types or not set(types).issubset(allowed):
+        raise HTTPException(status_code=422, detail="Share scope contains invalid record types")
     token = secrets.token_urlsafe(32)
     t_hash = hash_token(token)
     
@@ -58,7 +63,7 @@ def create_share(req: CreateShare, patient: CurrentPatient, db: SessionDep, requ
         "id": share.id,
         "token": token,
         "expires_at": share.expires_at,
-        "url": f"{request.base_url.scheme}://{request.base_url.hostname}:3000/shared/{token}"
+        "url": f"{settings.web_base_url.rstrip('/')}/shared/{token}"
     }
 
 @router.get("/shares")
@@ -72,11 +77,12 @@ def list_shares(patient: CurrentPatient, db: SessionDep):
         "expires_at": s.expires_at,
         "revoked_at": s.revoked_at,
         "created_at": s.created_at,
+        "is_emergency": s.is_emergency,
         "is_active": s.revoked_at is None and s.expires_at > now
     } for s in shares]
 
 @router.delete("/shares/{id}")
-def revoke_share(id: str, patient: CurrentPatient, db: SessionDep):
+def revoke_share(id: uuid.UUID, patient: CurrentPatient, db: SessionDep):
     share = db.query(Share).filter(Share.id == id, Share.patient_id == patient.id).first()
     if not share:
         raise HTTPException(status_code=404, detail="Share not found")
@@ -90,6 +96,16 @@ def revoke_share(id: str, patient: CurrentPatient, db: SessionDep):
     log_audit(db, patient.id, "patient", "Self", "Revoked Share", share.id)
     return {"message": "Share revoked"}
 
+@router.post("/emergency/revoke")
+def revoke_emergency_card(patient: CurrentPatient, db: SessionDep):
+    now = datetime.now(timezone.utc)
+    active = db.query(Share).filter(Share.patient_id == patient.id, Share.is_emergency.is_(True), Share.revoked_at.is_(None)).all()
+    for share in active:
+        share.revoked_at = now
+    db.commit()
+    log_audit(db, patient.id, "patient", "Self", "Revoked Emergency Card")
+    return {"status": "revoked", "count": len(active)}
+
 class ShareAuth(BaseModel):
     pin: Optional[str] = None
 
@@ -102,7 +118,7 @@ def get_shared_records(token: str, auth: ShareAuth, db: SessionDep, request: Req
         raise HTTPException(status_code=404, detail="Access ended or invalid link")
         
     now = datetime.now(timezone.utc)
-    if share.revoked_at or share.expires_at < now:
+    if share.revoked_at or share.expires_at <= now:
         raise HTTPException(status_code=403, detail="Access ended or expired")
         
     # Check PIN
@@ -121,6 +137,8 @@ def get_shared_records(token: str, auth: ShareAuth, db: SessionDep, request: Req
     records = db.query(Record).filter(
         Record.patient_id == patient.id,
         Record.verified == True,
+        Record.hidden_from_shares.is_(False),
+        Record.status != "entered_in_error",
         Record.type.in_(allowed_types)
     ).order_by(Record.recorded_date.desc()).all()
     
@@ -131,8 +149,8 @@ def get_shared_records(token: str, auth: ShareAuth, db: SessionDep, request: Req
     return {
         "patient": {
             "name": user.name,
-            "dob": patient.dob,
-            "blood_group": patient.blood_group
+            "dob": patient.dob if patient.privacy_preferences.get("share_date_of_birth", True) else None,
+            "blood_group": patient.blood_group if patient.privacy_preferences.get("share_blood_group", True) else None
         },
         "share": {
             "expires_at": share.expires_at,
@@ -173,7 +191,7 @@ def create_emergency_card(patient: CurrentPatient, db: SessionDep, request: Requ
     log_audit(db, patient.id, "patient", "Self", "Generated Emergency Card", share.id)
     
     return {
-        "url": f"{request.base_url.scheme}://{request.base_url.hostname}:3000/er/{token}"
+        "url": f"{settings.web_base_url.rstrip('/')}/er/{token}"
     }
 
 @router.get("/emergency/{token}")
@@ -181,7 +199,7 @@ def get_emergency_card(token: str, db: SessionDep, request: Request):
     t_hash = hash_token(token)
     share = db.query(Share).filter(Share.token_hash == t_hash, Share.is_emergency == True).first()
     
-    if not share or share.revoked_at:
+    if not share or share.revoked_at or share.expires_at <= datetime.now(timezone.utc):
         raise HTTPException(status_code=404, detail="Invalid emergency card")
         
     patient = db.query(Patient).filter(Patient.id == share.patient_id).first()
@@ -190,6 +208,8 @@ def get_emergency_card(token: str, db: SessionDep, request: Request):
     records = db.query(Record).filter(
         Record.patient_id == patient.id,
         Record.verified == True,
+        Record.hidden_from_shares.is_(False),
+        Record.status != "entered_in_error",
         Record.type.in_(["condition", "medication", "allergy"])
     ).all()
     

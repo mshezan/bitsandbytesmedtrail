@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
+from datetime import datetime, timezone, date
+import uuid
 from app.deps import get_db, CurrentUser
-from app.models import Patient, User, Record, AccessEvent, Staff
+from app.models import Patient, User, Record, AccessEvent, Staff, Consent
 
 router = APIRouter(prefix="/hospital", tags=["hospital"])
 
@@ -14,12 +16,27 @@ def get_current_staff(user: CurrentUser, db: Session = Depends(get_db)):
         raise HTTPException(status_code=403, detail="Staff record not found")
     return staff
 
+def active_consent(db: Session, patient_id, org_id):
+    return db.query(Consent).filter(
+        Consent.patient_id == patient_id, Consent.org_id == org_id,
+        Consent.status == "active", Consent.expires_at > datetime.now(timezone.utc)
+    ).order_by(Consent.expires_at.desc()).first()
+
+def clinical_label(value, fallback="Unknown"):
+    if isinstance(value, dict):
+        return value.get("text") or value.get("display") or fallback
+    return value if isinstance(value, str) and value else fallback
+
 @router.get("/search")
 def search_patients(q: str = Query(""), staff: Staff = Depends(get_current_staff), db: Session = Depends(get_db)):
     if not q:
         return []
     
-    patients = db.query(Patient).join(User).filter(
+    granted = db.query(Consent.patient_id).filter(
+        Consent.org_id == staff.org_id, Consent.status == "active",
+        Consent.expires_at > datetime.now(timezone.utc)
+    )
+    patients = db.query(Patient).join(User).filter(Patient.id.in_(granted),
         or_(
             User.name.ilike(f"%{q}%"),
             User.phone.ilike(f"%{q}%"),
@@ -35,14 +52,18 @@ def search_patients(q: str = Query(""), staff: Staff = Depends(get_current_staff
             "abha": p.abha_number,
             "phone": p.user.phone if p.user else None,
             "city": p.city,
-            "sex": p.user.sex if p.user else "U",
-            "dob": p.user.dob if p.user else None
+            "sex": p.sex or "U",
+            "dob": p.dob
         })
     return res
 
 @router.post("/patient/{patient_id}/access")
-def log_access(patient_id: str, purpose: str = Query(...), staff: Staff = Depends(get_current_staff), db: Session = Depends(get_db)):
-    import uuid
+def log_access(patient_id: uuid.UUID, purpose: str = Query(..., min_length=3, max_length=200), staff: Staff = Depends(get_current_staff), db: Session = Depends(get_db)):
+    patient = db.query(Patient).filter(Patient.id == patient_id).first()
+    if not patient:
+        raise HTTPException(404, "Patient not found")
+    if not active_consent(db, patient.id, staff.org_id):
+        raise HTTPException(403, "Active patient consent is required")
     evt = AccessEvent(
         id=uuid.uuid4(),
         patient_id=patient_id,
@@ -56,21 +77,115 @@ def log_access(patient_id: str, purpose: str = Query(...), staff: Staff = Depend
     return {"status": "logged", "access_id": evt.id}
 
 @router.get("/patient/{patient_id}")
-def get_patient_summary(patient_id: str, staff: Staff = Depends(get_current_staff), db: Session = Depends(get_db)):
+def get_patient_summary(patient_id: uuid.UUID, staff: Staff = Depends(get_current_staff), db: Session = Depends(get_db)):
     p = db.query(Patient).filter(Patient.id == patient_id).first()
     if not p:
         raise HTTPException(404, "Patient not found")
         
-    records = db.query(Record).filter(Record.patient_id == patient_id).all()
+    consent = active_consent(db, p.id, staff.org_id)
+    if not consent:
+        raise HTTPException(403, "Active patient consent is required")
+    allowed_types = [part.strip() for part in consent.scope.split(",") if part.strip()]
+    records = db.query(Record).filter(Record.patient_id == patient_id, Record.type.in_(allowed_types), Record.verified.is_(True), Record.status != "entered_in_error").all()
+    db.add(AccessEvent(patient_id=p.id, org_id=staff.org_id, staff_id=staff.id,
+                       purpose="Clinical record viewed", scope=consent.scope,
+                       records_viewed=len(records)))
+    db.commit()
+    age = date.today().year - p.dob.year - ((date.today().month, date.today().day) < (p.dob.month, p.dob.day))
     
+    pending_uploads = db.query(Record).filter(
+        Record.patient_id == patient_id, Record.source_type == "upload",
+        Record.patient_confirmed.is_(True), Record.verified.is_(False),
+        Record.type.in_(allowed_types)
+    ).order_by(Record.recorded_date.desc()).all()
+
     return {
         "id": p.id,
         "name": p.user.name,
         "abha": p.abha_number,
-        "age": 45, # mock computed
+        "age": age,
         "blood_group": p.blood_group,
-        "allergies": [r.fhir.get("code", {}).get("text") for r in records if r.type == "allergy"],
-        "conditions": [r.fhir.get("condition", "Unknown") for r in records if r.type == "condition"],
-        "medications": [r.fhir.get("medication", "Unknown") for r in records if r.type == "medication"],
-        "records_count": len(records)
+        "allergies": [clinical_label(r.fhir.get("code")) if r.fhir.get("code") else clinical_label(r.fhir.get("allergy")) for r in records if r.type == "allergy"],
+        "conditions": [clinical_label(r.fhir.get("code")) if r.fhir.get("code") else clinical_label(r.fhir.get("condition")) for r in records if r.type == "condition"],
+        "medications": [clinical_label(r.fhir.get("medicationCodeableConcept")) if r.fhir.get("medicationCodeableConcept") else clinical_label(r.fhir.get("medication")) for r in records if r.type == "medication"],
+        "observations": [{"date": r.recorded_date, "name": clinical_label(r.fhir.get("code"), "Observation"), "value": (r.fhir.get("valueQuantity") or {}).get("value") if isinstance(r.fhir.get("valueQuantity"), dict) else r.fhir.get("valueQuantity"), "unit": (r.fhir.get("valueQuantity") or {}).get("unit") if isinstance(r.fhir.get("valueQuantity"), dict) else None} for r in records if r.type == "observation"],
+        "records_count": len(records), "scope": allowed_types,
+        "can_amend": staff.role in {"doctor", "org_admin"},
+        "amendable_records": [{"id": str(r.id), "type": r.type, "fhir": r.fhir,
+                               "recorded_date": r.recorded_date, "status": r.status}
+                              for r in records if r.source_org_id == staff.org_id],
+        "pending_uploads": [{"id": str(r.id), "type": r.type, "fhir": r.fhir,
+                             "source_name": r.source_name, "recorded_date": r.recorded_date}
+                            for r in pending_uploads]
+    }
+
+
+@router.post("/patient/{patient_id}/records/{record_id}/verify-upload")
+def verify_patient_upload(patient_id: uuid.UUID, record_id: uuid.UUID,
+                          staff: Staff = Depends(get_current_staff), db: Session = Depends(get_db)):
+    if staff.role not in {"doctor", "org_admin"}:
+        raise HTTPException(403, "Only a clinician or organization administrator can verify patient uploads")
+    consent = active_consent(db, patient_id, staff.org_id)
+    if not consent:
+        raise HTTPException(403, "Active patient consent is required")
+    record = db.query(Record).filter(Record.id == record_id, Record.patient_id == patient_id,
+        Record.source_type == "upload", Record.patient_confirmed.is_(True),
+        Record.verified.is_(False)).first()
+    if not record:
+        raise HTTPException(404, "Confirmed patient upload not found")
+    if record.type not in consent.scope.split(","):
+        raise HTTPException(403, "Consent does not include this record category")
+    from app.models import AuditLog
+    actor = db.query(User).filter(User.id == staff.user_id).first()
+    record.verified = True
+    record.verified_by_staff_id = staff.id
+    db.add(AccessEvent(patient_id=patient_id, org_id=staff.org_id, staff_id=staff.id,
+        purpose="Verified patient-uploaded record", scope=record.type, records_viewed=1))
+    db.add(AuditLog(patient_id=patient_id, actor_type="clinician",
+        actor_label=actor.name if actor else "Clinician", action="Verified patient upload",
+        detail=f"{record.source_name}; {record.type}"))
+    db.commit()
+    return {"id": str(record.id), "verified": True}
+
+@router.get("/my-day")
+def get_my_day(staff: Staff = Depends(get_current_staff), db: Session = Depends(get_db)):
+    import datetime
+    import random
+    
+    # Fetch some patients to use in the mock schedule
+    patients = db.query(Patient).limit(5).all()
+    schedule = []
+    statuses = ["Done", "In consult", "Waiting", "Arrived", "Booked"]
+    times = ["09:00 AM", "10:30 AM", "11:15 AM", "01:00 PM", "02:30 PM"]
+    
+    for i, p in enumerate(patients):
+        u = p.user
+        schedule.append({
+            "id": p.id,
+            "time": times[i % len(times)],
+            "patient_name": u.name if u else "Unknown",
+            "age": 45 + i,
+            "sex": u.sex if u else "U",
+            "reason": "Follow-up" if i % 2 == 0 else "New Consult",
+            "status": statuses[i % len(statuses)],
+            "flags": ["high-risk"] if i == 1 else (["allergy"] if i == 2 else [])
+        })
+        
+    return {
+        "doctor_name": staff.user.name if staff.user else "Doctor",
+        "clinic": staff.organization.name if staff.organization else "Hospital",
+        "stats": {
+            "patients_today": 12,
+            "waiting_now": 2,
+            "results_review": 4,
+            "open_alerts": 1
+        },
+        "schedule": schedule,
+        "needs_attention": [
+            {"id": 1, "type": "lab_critical", "title": "Critical HbA1c: 9.2%", "patient": "Priya Sharma", "time": "10 mins ago"},
+            {"id": 2, "type": "interaction", "title": "Drug Interaction Warning", "patient": "Ramesh Iyer", "time": "1 hour ago"}
+        ],
+        "activity_feed": [
+            {"id": 1, "text": "Discharge summary added from Sunrise Heart Institute", "patient": "Kavita Nair", "time": "2 hours ago"}
+        ]
     }

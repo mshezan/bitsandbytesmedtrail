@@ -4,20 +4,24 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { fetchAPI, clearToken } from '@/lib/api';
 import { 
-  Home, Clock, Pill, FlaskConical, Stethoscope, Search, Command, Share2, ShieldAlert, FileText, Send, Lightbulb
+  Home, Clock, Pill, FlaskConical, Stethoscope, Search, Command, Share2, ShieldAlert, FileText, Send, Lightbulb, PlusCircle, ClipboardList, LockKeyhole, Flag, Bell
 } from 'lucide-react';
 
 const navItems = [
   { name: 'Overview', href: '/patient/home', icon: Home },
   { name: 'Timeline', href: '/patient/timeline', icon: Clock },
-  { name: 'Records', href: '/records', icon: FileText },
+  { name: 'Records', href: '/patient/records', icon: FileText },
   { name: 'Medications', href: '/patient/medications', icon: Pill },
   { name: 'Labs', href: '/patient/labs', icon: FlaskConical },
   { name: 'Providers', href: '/patient/providers', icon: Stethoscope },
-  { name: 'Insights', href: '/insights', icon: Lightbulb },
+  { name: 'Insights', href: '/patient/insights', icon: Lightbulb },
   { name: 'Share & Access', href: '/patient/share', icon: Share2 },
   { name: 'Emergency Card', href: '/patient/emergency', icon: ShieldAlert },
   { name: 'Handover', href: '/patient/handover', icon: Send },
+  { name: 'Self-reported', href: '/patient/self-reported', icon: ClipboardList },
+  { name: 'Privacy requests', href: '/patient/privacy', icon: LockKeyhole },
+  { name: 'Correction requests', href: '/patient/corrections', icon: Flag },
+  { name: 'Notifications', href: '/patient/notifications', icon: Bell },
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -33,7 +37,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     fetchAPI('/me').then(res => {
       if (res && res.user) {
-        setUser(res.user);
+        setUser({...res.user, profile_photo_url: res.patient?.profile_photo_url});
         if (res.user.role === 'hospital_staff' && !pathname.startsWith('/hospital') && !pathname.startsWith('/shared')) {
            router.push('/hospital/dashboard');
         }
@@ -117,8 +121,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
             
             <button className="p-2 text-slate-400 hover:text-emerald-600 md:hidden" onClick={() => setCmdOpen(true)}><Search className="h-5 w-5" /></button>
             <div className="relative">
-                <button onClick={() => setAvatarOpen(!avatarOpen)} className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold hover:ring-2 ring-emerald-300 transition outline-none">
-                  {user ? (user.name || 'U').substring(0,2).toUpperCase() : 'SJ'}
+                <button onClick={() => setAvatarOpen(!avatarOpen)} className="h-8 w-8 overflow-hidden rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold hover:ring-2 ring-emerald-300 transition outline-none">
+                  {user?.profile_photo_url ? <img src={user.profile_photo_url} alt="Profile" className="h-full w-full object-cover"/> : user ? (user.name || 'U').substring(0,2).toUpperCase() : 'SJ'}
                 </button>
                 {avatarOpen && (
                   <>
@@ -180,7 +184,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 onChange={e => setSearchQuery(e.target.value)}
                 onKeyDown={e => {
                   if(e.key === 'Enter' && searchQuery) {
-                    router.push('/timeline?q=' + encodeURIComponent(searchQuery));
+                    router.push('/patient/timeline?q=' + encodeURIComponent(searchQuery));
                     setCmdOpen(false);
                   }
                 }}
@@ -192,7 +196,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                <button onClick={() => { router.push('/patient/handover'); setCmdOpen(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-sm font-medium text-slate-700 flex items-center gap-3">
                  <Send className="h-4 w-4 text-emerald-600" /> Generate Handover Packet
                </button>
-               <button onClick={() => { router.push('/patient/connect'); setCmdOpen(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-sm font-medium text-slate-700 flex items-center gap-3">
+               <button onClick={() => { router.push('/patient/add'); setCmdOpen(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-sm font-medium text-slate-700 flex items-center gap-3">
                  <PlusCircle className="h-4 w-4 text-blue-600" /> Connect New Source
                </button>
             </div>
@@ -202,4 +206,3 @@ export function Shell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-

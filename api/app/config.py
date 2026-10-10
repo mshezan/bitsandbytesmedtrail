@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     demo_otp: str = "123456"
     anthropic_api_key: str = ""
     cors_origins: str = "http://localhost:3000"
+    web_base_url: str = "http://localhost:3000"
 
 
 settings = Settings()

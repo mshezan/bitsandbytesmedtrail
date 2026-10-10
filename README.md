@@ -1,20 +1,19 @@
-# MedTrail: ABDM-Aligned Unified Health Record
+# MedTrail: Unified Health Record Demo
 
-MedTrail solves fragmented medical history by giving patients a single, secure timeline and giving hospitals a point-of-care clinical dashboard via a unified API.
+MedTrail is a hackathon prototype for fragmented medical history. It provides a patient record timeline, consent-scoped clinician access, temporary patient-controlled share links, emergency lookup, and a simulated provider ingestion API. It uses synthetic demo data and is not connected to ABDM or real hospital systems.
 
 ## Architecture
 
 ```mermaid
 flowchart TD
     subgraph Hospitals & Labs
-        HIS[Hospital Information System]
-        LIMS[Lab System]
-        Pharm[Pharmacy]
+        Provider[Simulated provider]
+        Lab[Simulated lab]
     end
     
     subgraph MedTrail Core
-        API[Unified API Layer /v1/ingest]
-        Norm[Normalization Engine]
+        API[FastAPI /v1 ingestion]
+        Norm[FHIR and CSV normalization]
         DB[(PostgreSQL)]
         Insights[Clinical Insights Engine]
     end
@@ -25,9 +24,9 @@ flowchart TD
         ER[Emergency QR Access]
     end
     
-    HIS -->|FHIR / JSON| API
-    LIMS -->|CSV / HL7| API
-    Pharm -->|JSON| API
+    Provider -->|FHIR Bundle| API
+    Lab -->|Lab CSV| API
+    Patient -->|PDF, image, or manual entry| API
     
     API --> Norm
     Norm --> DB
@@ -35,8 +34,18 @@ flowchart TD
     
     DB <--> Patient
     DB <--> Clinician
-    DB <--> ER
+    DB --> ER
 ```
+
+Patient uploads are extracted for review before records are added. Provider ingestion and clinician views require active patient consent; public share links are scoped and expire, and patients can revoke them. The emergency card is a separate temporary access path.
+
+## Technology
+
+- Patient and clinician portals: Next.js, React, TypeScript, Tailwind CSS
+- API: Python, FastAPI, SQLAlchemy
+- Storage: PostgreSQL and MinIO for uploaded files
+- Local orchestration: Docker Compose
+- Ingestion: supported FHIR resources and lab CSV; provider document ingestion and real integrations are not implemented
 
 ## Setup & Running
 
@@ -44,7 +53,7 @@ flowchart TD
    ```bash
    docker compose up --build
    ```
-2. **Database Migrations and Seed:**
+2. **Database migrations and seed:**
    The `api` container automatically runs `alembic upgrade head` and the deterministic synthetic seed script (`python -m seed.seed`) upon boot.
 3. **Ports:**
    - Web App: http://localhost:3000
@@ -74,3 +83,7 @@ The seed script deterministically generates 40 patients (5 "Hero" patients with 
 - **Fatima Khan (34)**: Asthma. Documented allergy with a conflicting antibiotic prescription.
 - **Arjun Reddy (29)**: Unconscious ER scenario (test ER quick lookup).
 - **Kavita Nair (62)**: CKD Stage 3. Rising creatinine trend across 3 different labs.
+
+## Prototype limitations
+
+Patient OTP and hospital OTP delivery, production identity verification, real provider connectivity, and provider document ingestion are not configured. Demo accounts and seeded records are for demonstration only. Do not use this prototype for real patient data or clinical decisions.

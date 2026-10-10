@@ -17,6 +17,6 @@ class FHIRConnector(Connector):
         entries = raw_data.get("entry", [])
         for entry in entries:
             res = entry.get("resource", {})
-            if res.get("resourceType") in ["Observation", "Condition", "MedicationRequest", "Encounter"]:
+            if res.get("resourceType") in ["Observation", "Condition", "MedicationRequest", "MedicationStatement", "Encounter", "AllergyIntolerance", "DiagnosticReport"]:
                 records.append(res)
         return records

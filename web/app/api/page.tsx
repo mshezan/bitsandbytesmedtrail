@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Play, Terminal } from "lucide-react";
-import { fetchAPI } from "@/lib/api";
 
 export default function APIPage() {
   const [response, setResponse] = useState<any>(null);
@@ -34,12 +33,12 @@ export default function APIPage() {
         <div className="flex-1">
           <h1 className="text-4xl font-bold mb-4">MedTrail Unified API</h1>
           <p className="text-lg text-slate-600 mb-8">
-            Our REST API allows authorized healthcare providers to ingest raw clinical data and retrieve normalized, ABDM-aligned FHIR R4 records.
+            The demo API accepts simulated FHIR bundles and lab CSV rows, and returns normalized records in the patient timeline. Real hospital connectivity is not configured.
           </p>
 
           <h2 className="text-2xl font-semibold mb-4">Authentication</h2>
           <p className="text-slate-600 mb-6">
-            System-to-system calls require an <code>X-API-Key</code> header. You can manage your API keys from the Integrations tab in the Hospital Portal.
+            In this demo, use <code>X-API-Key: test-key-123</code>. This key is only enabled when demo mode is on. Every ingest request also requires an existing patient ID and active consent for the sending organization.
           </p>
 
           <h2 className="text-2xl font-semibold mb-4">Core Endpoints</h2>
@@ -47,25 +46,25 @@ export default function APIPage() {
             <div className="bg-white p-4 rounded-xl border border-slate-200">
               <div className="flex items-center gap-3 mb-2">
                 <span className="bg-emerald-100 text-emerald-800 font-mono text-xs px-2 py-1 rounded">POST</span>
-                <span className="font-mono text-sm font-semibold">/v1/ingest/bundle</span>
+                <span className="font-mono text-sm font-semibold">/api/v1/ingest/bundle?patient_id=...</span>
               </div>
-              <p className="text-sm text-slate-600">Ingest a raw FHIR transaction bundle containing Patient and clinical resources.</p>
+              <p className="text-sm text-slate-600">Accepts a FHIR Bundle with supported clinical resources. Patient ID must identify an existing patient with an active grant to this organization.</p>
             </div>
             
             <div className="bg-white p-4 rounded-xl border border-slate-200">
               <div className="flex items-center gap-3 mb-2">
                 <span className="bg-emerald-100 text-emerald-800 font-mono text-xs px-2 py-1 rounded">POST</span>
-                <span className="font-mono text-sm font-semibold">/v1/ingest/csv</span>
+                <span className="font-mono text-sm font-semibold">/api/v1/ingest/csv?patient_id=...</span>
               </div>
-              <p className="text-sm text-slate-600">Ingest a legacy LIMS CSV payload mapping to generic Observation records.</p>
+              <p className="text-sm text-slate-600">CSV columns: test (or test_name), date, value, unit, and optional source. Requires an active observation grant.</p>
             </div>
 
             <div className="bg-white p-4 rounded-xl border border-slate-200">
               <div className="flex items-center gap-3 mb-2">
                 <span className="bg-blue-100 text-blue-800 font-mono text-xs px-2 py-1 rounded">GET</span>
-                <span className="font-mono text-sm font-semibold">/v1/patients/lookup</span>
+                <span className="font-mono text-sm font-semibold">GET /api/v1/patients/lookup?abha=...</span>
               </div>
-              <p className="text-sm text-slate-600">Secure demographic search via ABHA ID or phone number (returns 200 OK if matched).</p>
+              <p className="text-sm text-slate-600">Looks up a patient by ABHA only when the caller's organization has active consent.</p>
             </div>
           </div>
         </div>

@@ -10,6 +10,9 @@ export default function AddRecordsPage() {
   const [connectors, setConnectors] = useState<{ id: string; name: string }[]>([]);
   const [syncing, setSyncing] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [sourceName, setSourceName] = useState("");
 
   useEffect(() => {
     fetchAPI("/connectors").then(setConnectors).catch(console.error);
@@ -21,20 +24,22 @@ export default function AddRecordsPage() {
     const file = e.target.files[0];
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("source_name", sourceName);
 
     try {
-      const res = await fetch(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000" + "/uploads", {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${apiBase}/uploads`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${localStorage.getItem("medtrail_token")}` },
         body: formData,
       });
-      if (!res.ok) throw new Error("Upload failed");
-      // Give the backend a second to process in background (in a real app we'd poll or use websockets)
-      setTimeout(() => {
-        router.push("/confirm");
-      }, 1500);
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload.detail || "Upload failed");
+      }
+      router.push("/patient/confirm");
     } catch (err: any) {
-      alert(err.message);
+      setError(err.message);
       setUploading(false);
     }
   }
@@ -43,10 +48,10 @@ export default function AddRecordsPage() {
     setSyncing(id);
     try {
       const res = await fetchAPI(`/connectors/${id}/sync`, { method: "POST" });
-      alert(`Sync successful! Imported ${res.imported_count} records.`);
+      setMessage(`Sync complete. ${res.imported_count} records added.`);
       router.push("/patient/timeline");
     } catch (err: any) {
-      alert("Error: " + err.message);
+      setError(err.message);
     } finally {
       setSyncing(null);
     }
@@ -66,14 +71,20 @@ export default function AddRecordsPage() {
           <p className="mt-1 text-neutral-500">Upload documents or sync from providers.</p>
         </div>
       </header>
+      {error && <p role="alert" className="mb-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
+      {message && <p role="status" className="mb-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900">{message}</p>}
 
       <section className="mb-10">
         <h2 className="mb-4 text-xl font-semibold">Upload Document</h2>
+        <label className="mb-4 block text-sm font-medium text-slate-700">External hospital or clinic (must not be connected to MedTrail)
+          <input value={sourceName} onChange={e => setSourceName(e.target.value)} required minLength={3} maxLength={200} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3" placeholder="Name of the outside provider" />
+        </label>
+        <p className="mb-3 text-sm text-slate-600">For providers outside this system only. Records from connected organizations must arrive through their API integration.</p>
         <label className={`flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed ${uploading ? 'opacity-50' : 'hover:bg-neutral-100'} border-neutral-300 bg-mist py-12 text-center`}>
           <Upload className="mb-3 h-8 w-8 text-neutral-400" />
           <p className="font-medium text-neutral-700">{uploading ? "Uploading and extracting..." : "Drag & drop your file here"}</p>
           <p className="text-sm text-neutral-500">or click to browse (PDF, JPG, PNG)</p>
-          <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleUpload} disabled={uploading} />
+          <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleUpload} disabled={uploading || sourceName.trim().length < 3} />
         </label>
       </section>
 
@@ -90,7 +101,7 @@ export default function AddRecordsPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-neutral-900">{c.name}</h3>
-                  <p className="text-sm text-neutral-500">Mock Connector</p>
+                  <p className="text-sm text-neutral-500">Synthetic demo source</p>
                 </div>
               </div>
               <button

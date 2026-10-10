@@ -17,7 +17,7 @@ export default function LoginPage() {
   // Hospital fields
   const [hospitalId, setHospitalId] = useState("HOSP-KAV-001");
   const [email, setEmail] = useState("ramesh.iyer@kaveri.local");
-  const [password, setPassword] = useState("password");
+  const [password, setPassword] = useState("password123");
   const [hospitalCode, setHospitalCode] = useState("123456");
 
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +68,7 @@ export default function LoginPage() {
         body: JSON.stringify({ hospital_id: hospitalId, email, password, otp: hospitalCode }),
       });
       setToken(res.access_token);
-      router.push("/hospital/dashboard"); // Or wherever clinician workspace is
+      router.push("/hospital/home"); // Or wherever clinician workspace is
     } catch (err: any) {
       setError(err.message);
     } finally {

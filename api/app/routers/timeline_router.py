@@ -9,7 +9,8 @@ router = APIRouter(tags=["timeline"])
 def get_timeline(patient: CurrentPatient, db: SessionDep, type: Optional[str] = None):
     query = db.query(Record).filter(
         Record.patient_id == patient.id,
-        Record.verified == True
+        Record.verified == True,
+        Record.status != "entered_in_error",
     )
     if type:
         query = query.filter(Record.type == type)
@@ -24,6 +25,8 @@ def get_timeline(patient: CurrentPatient, db: SessionDep, type: Optional[str] = 
             "source_name": r.source_name,
             "recorded_date": r.recorded_date,
             "verified": r.verified,
+            "status": r.status,
+            "source_type": r.source_type,
         }
         for r in records
     ]
@@ -35,6 +38,7 @@ def get_trends(observation_name: str, patient: CurrentPatient, db: SessionDep):
         .filter(Record.patient_id == patient.id)
         .filter(Record.type == "observation")
         .filter(Record.verified == True)
+        .filter(Record.status != "entered_in_error")
         .order_by(Record.recorded_date.asc())
         .all()
     )
