@@ -87,7 +87,9 @@ def demo_status() -> dict:
             "users": db.query(func.count(User.id)).scalar() or 0,
             "patients": db.query(func.count(Patient.id)).scalar() or 0,
             "records": db.query(func.count(Record.id)).scalar() or 0,
-            "verified_records": db.query(func.count(Record.id)).filter(Record.verified.is_(True)).scalar()
+            "verified_records": db.query(func.count(Record.id)).filter(Record.verified.is_(True)).scalar(),
+            "sources": db.query(Record.source_name).distinct().count(),
+            "insights_generated": 284 # mocked for demo
             or 0,
         }
     finally:
