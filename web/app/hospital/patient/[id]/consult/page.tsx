@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { fetchAPI } from "@/lib/api";
-import { 
+import { Search, 
   AlertTriangle, Clock, Play, FileText, CheckCircle2, ShieldAlert, 
   Activity, ArrowUpRight, ArrowDownRight, Edit3, X, FilePlus, ChevronRight 
 } from "lucide-react";

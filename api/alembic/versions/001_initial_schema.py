@@ -22,7 +22,7 @@ def upgrade() -> None:
     op.create_table(
         "users",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("role", sa.Enum("patient", "clinician", name="user_role"), nullable=False),
+        sa.Column("role", sa.Enum("patient", "hospital_staff", "org_admin", "clinician", name="user_role"), nullable=False),
         sa.Column("name", sa.String(200), nullable=False),
         sa.Column("phone", sa.String(32), nullable=False, unique=True),
         sa.Column("email", sa.String(255), unique=True),

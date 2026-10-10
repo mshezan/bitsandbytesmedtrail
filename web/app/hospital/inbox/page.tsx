@@ -18,7 +18,7 @@ export default function InboxPage() {
     loadData();
   }, []);
 
-  const handleAcknowledge = async (id: str) => {
+  const handleAcknowledge = async (id: string) => {
     try {
       await fetchAPI(`/hospital/inbox/${id}/acknowledge`, { method: "POST" });
       // update local state
