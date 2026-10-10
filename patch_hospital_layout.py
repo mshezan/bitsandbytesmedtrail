@@ -1,16 +1,14 @@
-import os
-
-filepath = "web/app/hospital/layout.tsx"
-with open(filepath, "r") as f:
+with open("web/app/hospital/layout.tsx", "r") as f:
     content = f.read()
 
-# Change /hospital/dashboard to /hospital/home
-content = content.replace('href: "/hospital/dashboard"', 'href: "/hospital/home"')
+import re
 
-# Replace blue colors with emerald/sage
-content = content.replace("bg-blue-600", "bg-emerald-600")
-content = content.replace("text-blue-600", "text-emerald-600")
-content = content.replace("border-blue-600", "border-emerald-600")
+# Add the network icon import
+content = content.replace('Command, Bell, Activity, UserPlus, BarChart2, Zap, History', 'Command, Bell, Activity, UserPlus, BarChart2, Zap, History, Network')
 
-with open(filepath, "w") as f:
+# Add the navigation item
+new_nav = '{ name: "Integration Hub", href: "/hospital/integration", icon: Network },\n    { name: "Analytics", href: "/hospital/analytics", icon: BarChart2 },'
+content = content.replace('{ name: "Analytics", href: "/hospital/analytics", icon: BarChart2 },', new_nav)
+
+with open("web/app/hospital/layout.tsx", "w") as f:
     f.write(content)

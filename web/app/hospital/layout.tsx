@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { fetchAPI, clearToken } from "@/lib/api";
-import { Stethoscope, LayoutDashboard, Search, Inbox, Settings, Command, Bell, Activity, UserPlus, BarChart2, Zap, History } from "lucide-react";
+import { Stethoscope, LayoutDashboard, Search, Inbox, Settings, Command, Bell, Activity, UserPlus, BarChart2, Zap, History, Network } from "lucide-react";
 
 const nav = [
     { name: "Dashboard", href: "/hospital/home", icon: LayoutDashboard },
@@ -12,6 +12,7 @@ const nav = [
     { name: "Inbox & Orders", href: "/hospital/inbox", icon: Bell },
     { name: "ER Triage", href: "/hospital/er", icon: Activity },
     { name: "Inpatients", href: "/hospital/inpatients", icon: UserPlus },
+    { name: "Integration Hub", href: "/hospital/integration", icon: Network },
     { name: "Analytics", href: "/hospital/analytics", icon: BarChart2 },
     { name: "Insights", href: "/hospital/insights", icon: Zap },
     { name: "Access History", href: "/hospital/access", icon: History },
