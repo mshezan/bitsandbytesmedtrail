@@ -4,25 +4,41 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { fetchAPI, clearToken } from '@/lib/api';
 import { 
-  Home, Clock, Pill, FlaskConical, Stethoscope, Search, Command, Share2, ShieldAlert, FileText, Send, Lightbulb, PlusCircle, ClipboardList, LockKeyhole, Flag, Bell
+  Home, Clock, Calendar as CalendarIcon, Pill, FlaskConical, Stethoscope, Search, Command, Share2, ShieldAlert, FileText, Send, Lightbulb, PlusCircle, ClipboardList, LockKeyhole, Flag, Bell, Trash2
 } from 'lucide-react';
 
-const navItems = [
-  { name: 'Overview', href: '/patient/home', icon: Home },
-  { name: 'Timeline', href: '/patient/timeline', icon: Clock },
-  { name: 'Records', href: '/patient/records', icon: FileText },
-  { name: 'Medications', href: '/patient/medications', icon: Pill },
-  { name: 'Labs', href: '/patient/labs', icon: FlaskConical },
-  { name: 'Providers', href: '/patient/providers', icon: Stethoscope },
-  { name: 'Insights', href: '/patient/insights', icon: Lightbulb },
-  { name: 'Share & Access', href: '/patient/share', icon: Share2 },
-  { name: 'Emergency Card', href: '/patient/emergency', icon: ShieldAlert },
-  { name: 'Handover', href: '/patient/handover', icon: Send },
-  { name: 'Self-reported', href: '/patient/self-reported', icon: ClipboardList },
-  { name: 'Privacy requests', href: '/patient/privacy', icon: LockKeyhole },
-  { name: 'Correction requests', href: '/patient/corrections', icon: Flag },
-  { name: 'Notifications', href: '/patient/notifications', icon: Bell },
+
+const navGroups = [
+  {
+    title: "Care",
+    items: [
+      { name: 'Overview', href: '/patient/home', icon: Home },
+      { name: 'Calendar', href: '/patient/calendar', icon: CalendarIcon },
+      { name: 'Timeline', href: '/patient/timeline', icon: Clock },
+      { name: 'Records', href: '/patient/records', icon: FileText },
+      { name: 'Medications', href: '/patient/medications', icon: Pill },
+      { name: 'Labs', href: '/patient/labs', icon: FlaskConical },
+      { name: 'Providers', href: '/patient/providers', icon: Stethoscope },
+    ]
+  },
+  {
+    title: "Sharing & Care",
+    items: [
+      { name: 'Share & Access', href: '/patient/share', icon: Share2 },
+      { name: 'Emergency Card', href: '/patient/emergency', icon: ShieldAlert },
+      { name: 'Handover', href: '/patient/handover', icon: Send },
+      { name: 'Request record removal', href: '/patient/privacy', icon: Trash2 },
+    ]
+  },
+  {
+    title: "Me",
+    items: [
+      { name: 'Self-reported', href: '/patient/self-reported', icon: ClipboardList },
+      { name: 'Notifications', href: '/patient/notifications', icon: Bell },
+    ]
+  }
 ];
+
 
 export function Shell({ children }: { children: React.ReactNode }) {
   
@@ -82,25 +98,30 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <span className="font-bold text-xl tracking-tight">MedTrail</span>
         </div>
         
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const active = pathname.startsWith(item.href);
-            return (
-              <Link key={item.name} href={item.href}
-                className={`flex items-center px-3 py-2.5 rounded-lg transition-colors ${active ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
-              >
-                <item.icon className={`h-5 w-5 mr-3 ${active ? 'text-emerald-600' : 'text-slate-400'}`} />
-                {item.name}
-              </Link>
-            )
-          })}
-        </nav>
+        <div className="flex-1 overflow-y-auto p-4 md:p-4 space-y-6">
+          {navGroups.map((group, gIdx) => (
+            <div key={gIdx}>
+              <h3 className="px-3 text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">{group.title}</h3>
+              <nav className="space-y-1">
+                {group.items.map((item) => {
+                  const isActive = pathname.startsWith(item.href);
+                  return (
+                    <Link key={item.name} href={item.href} className={`flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                      <item.icon className={`w-5 h-5 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
+                      <span>{item.name}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+          ))}
+        </div>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
-        <header className="bg-white border-b border-slate-200 p-4 flex items-center justify-between z-10 shrink-0">
+        <header className="bg-white border-b border-slate-200 p-4 flex items-center justify-between z-50 shrink-0 shadow-sm relative">
           <div className="flex items-center space-x-4 md:hidden">
              <span className="font-bold text-emerald-700 flex items-center"><Stethoscope className="h-5 w-5 mr-1" /> MedTrail</span>
           </div>
@@ -154,7 +175,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Tab Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-2 pb-safe z-20">
-        {navItems.slice(0, 5).map((item) => {
+        {navGroups[0].items.slice(0, 5).map((item) => {
           const active = pathname.startsWith(item.href);
           return (
             <Link key={item.name} href={item.href}

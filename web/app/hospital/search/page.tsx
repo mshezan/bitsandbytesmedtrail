@@ -25,20 +25,23 @@ export default function PatientSearch() {
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const router = useRouter();
 
   useEffect(() => {
-    if (!debouncedQuery) {
-      setResults([]);
-      return;
-    }
+    setQuery(new URLSearchParams(window.location.search).get("q") || "");
+  }, []);
+
+  useEffect(() => {
     setLoading(true);
-    fetchAPI(`/hospital/search?q=${encodeURIComponent(debouncedQuery)}`)
+    setLoadError("");
+    const endpoint = debouncedQuery ? `/hospital/search?q=${encodeURIComponent(debouncedQuery)}` : "/hospital/search";
+    fetchAPI(endpoint)
       .then(res => {
         // Group near-duplicates (mock logic: same name)
         const grouped: Record<string, any[]> = {};
         res.forEach((p: any) => {
-          const key = p.name.toLowerCase();
+          const key = (p.name || "Unknown").toLowerCase();
           if (!grouped[key]) grouped[key] = [];
           grouped[key].push(p);
         });
@@ -53,13 +56,13 @@ export default function PatientSearch() {
         }
         setResults(finalResults);
       })
-      .catch(console.error)
+      .catch((e: any) => { setResults([]); setLoadError(e.message || "Could not search patients."); })
       .finally(() => setLoading(false));
   }, [debouncedQuery]);
 
   return (
-    <div className="p-8 max-w-6xl mx-auto flex gap-8">
-      <div className="flex-1">
+    <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+      <div className="min-w-0 flex-1">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-slate-800">Patient Search</h1>
           <button 
@@ -88,7 +91,7 @@ export default function PatientSearch() {
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
-          {loading ? (
+          {loadError ? <div role="alert" className="p-12 text-center text-rose-700">{loadError}</div> : loading ? (
             <div className="p-12 text-center text-slate-500 flex flex-col items-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mb-4"></div>
               Searching network...
@@ -173,8 +176,8 @@ export default function PatientSearch() {
           ) : (
             <div className="p-16 text-center text-slate-500">
               <SearchIcon className="h-12 w-12 mx-auto text-slate-300 mb-4" />
-              <p className="text-lg font-medium text-slate-700">Find a Patient</p>
-              <p className="text-sm mt-1">Search the unified ABDM network.</p>
+              <p className="text-lg font-medium text-slate-700">No recent patients yet</p>
+              <p className="text-sm mt-1">Search by name, ABHA ID, or the beginning of a phone number.</p>
             </div>
           )}
         </div>
@@ -182,7 +185,7 @@ export default function PatientSearch() {
 
       {/* Registration Slide-over / Form */}
       {showRegister && (
-        <div className="w-[400px] bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden flex flex-col h-[calc(100vh-8rem)] sticky top-8">
+        <div className="sticky top-8 flex h-[calc(100vh-8rem)] w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl lg:w-[400px]">
           <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
             <h2 className="font-bold text-slate-800 flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-emerald-600" /> Register Patient

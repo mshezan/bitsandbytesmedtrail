@@ -18,11 +18,23 @@ export default function ReferralComposer({ patientId, onClose }: any) {
   const [urgency, setUrgency] = useState("Routine");
   const [sent, setSent] = useState(false);
   const [refId, setRefId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const handoverSections = ["Pre-Visit Brief Summary", "Active Medications", "Active Allergies", "Latest Vitals", "Key Labs (Last 30 days)", "Relevant Discharge Summaries"];
+  const [sections, setSections] = useState(handoverSections);
 
   const handleSend = async () => {
-    // Mock send
-    setRefId(`REF-${Math.floor(Math.random() * 10000)}`);
-    setSent(true);
+    setBusy(true); setError("");
+    try {
+      const result = await fetchAPI(`/hospital/patient/${patientId}/referral`, {
+        method: "POST",
+        body: JSON.stringify({ organization: org, specialty, reason, urgency, sections }),
+      });
+      setRefId(result.referral_id);
+      setSent(true);
+    } catch (e: any) {
+      setError(e.message || "Referral could not be sent. Confirm patient access and try again.");
+    } finally { setBusy(false); }
   };
 
   return (
@@ -42,9 +54,9 @@ export default function ReferralComposer({ patientId, onClose }: any) {
             <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border-4 border-white">
               <Check className="w-8 h-8" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Referral Packet Sent</h2>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Referral Recorded</h2>
             <p className="text-slate-500 mb-2 max-w-sm mx-auto">Reference: {refId}</p>
-            <p className="text-slate-500 mb-8 max-w-sm mx-auto">The digital handover packet containing the requested unified records has been transmitted to {org}.</p>
+            <p className="text-slate-500 mb-8 max-w-sm mx-auto">The referral is saved to the patient&apos;s MedTrail history for {org}. External delivery requires a connected provider network.</p>
             <button onClick={onClose} className="px-6 py-3 bg-slate-800 text-white rounded-xl font-medium hover:bg-slate-900 transition shadow-sm">
               Close Editor
             </button>
@@ -90,19 +102,12 @@ export default function ReferralComposer({ patientId, onClose }: any) {
 
               <div className="w-72 bg-slate-50 border-l border-slate-200 p-6 flex flex-col">
                 <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2"><Paperclip className="w-4 h-4"/> Handover Packet</h3>
-                <p className="text-xs text-slate-500 mb-4">Select the unified record sections to automatically bundle and transmit.</p>
+                <p className="text-xs text-slate-500 mb-4">Choose the history sections to include in this referral record.</p>
                 
                 <div className="space-y-3">
-                  {[
-                    "Pre-Visit Brief Summary",
-                    "Active Medications",
-                    "Active Allergies",
-                    "Latest Vitals",
-                    "Key Labs (Last 30 days)",
-                    "Relevant Discharge Summaries"
-                  ].map((lbl, i) => (
+                  {handoverSections.map((lbl, i) => (
                     <label key={i} className="flex items-start gap-2 text-sm cursor-pointer">
-                      <input type="checkbox" defaultChecked className="mt-0.5" />
+                      <input type="checkbox" checked={sections.includes(lbl)} onChange={event => setSections(current => event.target.checked ? [...current, lbl] : current.filter(section => section !== lbl))} className="mt-0.5" />
                       <span className="text-slate-700 leading-tight">{lbl}</span>
                     </label>
                   ))}
@@ -110,11 +115,12 @@ export default function ReferralComposer({ patientId, onClose }: any) {
               </div>
             </div>
 
-            <div className="p-6 border-t border-slate-200 bg-white flex justify-end items-center shrink-0">
+            <div className="p-6 border-t border-slate-200 bg-white flex justify-between items-center shrink-0">
+              {error ? <p role="alert" className="mr-4 text-sm text-rose-700">{error}</p> : <span />}
               <div className="flex gap-3">
                 <button onClick={onClose} className="px-6 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-slate-200 transition">Cancel</button>
-                <button onClick={handleSend} disabled={!org || !specialty || !reason} className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                  <Send className="w-4 h-4" /> Transmit Referral
+                <button onClick={handleSend} disabled={!org || !specialty || !reason.trim() || busy} className="flex items-center gap-2 px-6 py-2.5 bg-emerald-700 text-white rounded-xl font-bold hover:bg-emerald-800 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                  <Send className="w-4 h-4" /> {busy ? "Saving…" : "Create Referral"}
                 </button>
               </div>
             </div>

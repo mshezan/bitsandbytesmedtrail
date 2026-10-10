@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Lock, X, FileText, ChevronDown, Check, Wand2 } from "lucide-react";
 import { fetchAPI } from "@/lib/api";
 
@@ -14,6 +14,24 @@ export default function NoteEditor({ patientId, onClose, activeVitals, activeMed
   const [template, setTemplate] = useState("OPD Consult SOAP");
   const [content, setContent] = useState(TEMPLATES["OPD Consult SOAP"]);
   const [signed, setSigned] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const draftKey = `medtrail-note-draft:${patientId}`;
+
+  useEffect(() => {
+    const draft = localStorage.getItem(draftKey);
+    if (draft) {
+      try {
+        const saved = JSON.parse(draft);
+        if (saved.template && TEMPLATES[saved.template]) setTemplate(saved.template);
+        if (typeof saved.content === "string") setContent(saved.content);
+      } catch { localStorage.removeItem(draftKey); }
+    }
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!signed) localStorage.setItem(draftKey, JSON.stringify({ template, content }));
+  }, [draftKey, template, content, signed]);
 
   const handleTemplateChange = (e: any) => {
     const val = e.target.value;
@@ -22,25 +40,28 @@ export default function NoteEditor({ patientId, onClose, activeVitals, activeMed
   };
 
   const insertVitals = () => {
-    const vitalsText = activeVitals.map((v:any) => `${v.name}: ${v.value}`).join(", ");
+    const vitalsText = (activeVitals || []).map((v:any) => `${v.name}: ${v.value}`).join(", ");
     setContent(content + `\n[Inserted Vitals]: ${vitalsText}`);
   };
 
   const insertMeds = () => {
-    const medsText = activeMeds.map((m:any) => m.name).join(", ");
+    const medsText = (activeMeds || []).map((m:any) => m.name).join(", ");
     setContent(content + `\n[Inserted Meds]: ${medsText}`);
   };
 
   const handleSign = async () => {
+    if (!content.trim()) { setError("Enter note content before signing."); return; }
+    setSaving(true); setError("");
     try {
       await fetchAPI(`/hospital/patient/${patientId}/note`, {
         method: "POST",
         body: JSON.stringify({ title: `Clinical Note (${template})`, content, template })
       });
+      localStorage.removeItem(draftKey);
       setSigned(true);
     } catch (e) {
-      alert("Failed to sign note");
-    }
+      setError(e instanceof Error ? e.message : "Failed to sign note.");
+    } finally { setSaving(false); }
   };
 
   return (
@@ -77,7 +98,7 @@ export default function NoteEditor({ patientId, onClose, activeVitals, activeMed
                 <button onClick={insertVitals} className="flex items-center gap-1 text-blue-600 font-semibold hover:bg-blue-50 px-2 py-1 rounded transition"><Wand2 className="w-4 h-4"/> Insert Vitals</button>
                 <button onClick={insertMeds} className="flex items-center gap-1 text-blue-600 font-semibold hover:bg-blue-50 px-2 py-1 rounded transition"><Wand2 className="w-4 h-4"/> Insert Active Meds</button>
               </div>
-              <span className="text-xs text-emerald-600 font-bold">Autosaved 12s ago</span>
+              <span className="text-xs text-emerald-700 font-bold">Draft saved on this device</span>
             </div>
 
             <div className="flex-1 p-6 bg-white overflow-hidden flex flex-col">
@@ -90,10 +111,11 @@ export default function NoteEditor({ patientId, onClose, activeVitals, activeMed
             </div>
 
             <div className="p-6 border-t border-slate-200 bg-slate-50 flex justify-end items-center shrink-0">
+              <div className="mr-auto">{error && <p role="alert" className="text-sm font-medium text-rose-700">{error}</p>}</div>
               <div className="flex gap-3">
-                <button onClick={onClose} className="px-6 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-slate-200 transition">Save Draft</button>
-                <button onClick={handleSign} className="flex items-center gap-2 px-6 py-2.5 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-900 transition shadow-lg shadow-slate-300">
-                  <Lock className="w-4 h-4" /> Sign & Lock Note
+                <button onClick={onClose} className="px-6 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-slate-200 transition">Save Draft & Close</button>
+                <button disabled={saving} onClick={handleSign} className="flex items-center gap-2 px-6 py-2.5 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-900 transition shadow-lg shadow-slate-300 disabled:opacity-60">
+                  <Lock className="w-4 h-4" /> {saving ? "Saving…" : "Sign & Lock Note"}
                 </button>
               </div>
             </div>

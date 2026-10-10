@@ -92,7 +92,7 @@ export default function LoginPage() {
         </button>
         <button 
           onClick={() => {setRole("hospital"); setStep("request")}} 
-          className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all ${role === "hospital" ? "bg-white shadow-sm text-blue-600" : "text-slate-500 hover:text-slate-700"}`}
+          className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all ${role === "hospital" ? "bg-white shadow-sm text-emerald-700" : "text-slate-500 hover:text-slate-700"}`}
         >
           Hospital Staff
         </button>
@@ -158,7 +158,7 @@ export default function LoginPage() {
               type="text"
               value={hospitalId}
               onChange={(e) => setHospitalId(e.target.value)}
-              className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+              className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
               placeholder="e.g. HOSP-KAV-001"
               required
             />
@@ -169,7 +169,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+              className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
               placeholder="ramesh.iyer@kaveri.local"
               required
             />
@@ -180,7 +180,7 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+              className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
               required
             />
           </label>
@@ -190,7 +190,7 @@ export default function LoginPage() {
               type="text"
               value={hospitalCode}
               onChange={(e) => setHospitalCode(e.target.value)}
-              className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+              className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
               placeholder="123456"
               required
             />
@@ -198,7 +198,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="rounded-xl bg-blue-600 px-4 py-3 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-xl bg-emerald-800 px-4 py-3 font-medium text-white hover:bg-emerald-900 disabled:opacity-50"
           >
             {loading ? "Signing in..." : "Sign In to Hospital Portal"}
           </button>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { fetchAPI } from "@/lib/api";
+import Link from "next/link";
 import { Search, 
   AlertTriangle, Clock, Play, FileText, CheckCircle2, ShieldAlert, 
   Activity, ArrowUpRight, ArrowDownRight, Edit3, X, FilePlus, ChevronRight 
@@ -14,6 +15,7 @@ import ReferralComposer from "@/components/ReferralComposer";
 
 export default function ConsultWorkspace({ params }: { params: { id: string } }) {
   const [data, setData] = useState<any>(null);
+  const [loadError, setLoadError] = useState("");
   const [brief, setBrief] = useState<any>(null);
   const [briefLoading, setBriefLoading] = useState(false);
   const [showRxComposer, setShowRxComposer] = useState(false);
@@ -24,7 +26,15 @@ export default function ConsultWorkspace({ params }: { params: { id: string } })
   const router = useRouter();
 
   useEffect(() => {
-    fetchAPI(`/hospital/patient/${params.id}/workspace`).then(setData).catch(console.error);
+    setLoadError("");
+    fetchAPI(`/hospital/patient/${params.id}/workspace`).then(setData).catch((error: any) => setLoadError(error.message || "Could not load this patient chart."));
+  }, [params.id]);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("mode") === "daily-notes") {
+      setActiveTab("Notes & Visits");
+      setShowNoteEditor(true);
+    }
   }, [params.id]);
 
   const fetchBrief = (force = false) => {
@@ -39,9 +49,18 @@ export default function ConsultWorkspace({ params }: { params: { id: string } })
   }, [activeTab, params.id, brief]);
 
 
-  if (!data) return <div className="p-8 text-center text-slate-500 animate-pulse">Loading Workspace...</div>;
+  if (!data) return <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+    {loadError ? <><ShieldAlert className="mx-auto h-8 w-8 text-amber-600"/><h1 className="mt-3 text-xl font-bold text-slate-900">{loadError.toLowerCase().includes('patient not found') ? 'Patient not found' : 'Could not load clinical chart'}</h1><p role="alert" className="mt-2 text-sm text-slate-600">{loadError}</p><Link href="/hospital/search" className="mt-5 inline-flex rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-900">Back to patient search</Link></> : <div className="animate-pulse text-slate-500">Loading clinical workspace…</div>}
+  </div>;
 
   const { header, allergies, conditions, medications, labs, vitals } = data;
+  const chartHistory = data.history || [];
+  const historyForTab = chartHistory.filter((record: any) => {
+    if (activeTab === 'Problems') return record.type === 'condition' || record.type === 'allergy';
+    if (activeTab === 'Imaging & Reports') return record.type === 'report' || record.resource_type === 'DiagnosticReport';
+    if (activeTab === 'Notes & Visits') return record.type === 'encounter' || ['ClinicalImpression', 'DocumentReference', 'Composition'].includes(record.resource_type);
+    return true;
+  });
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 font-sans overflow-hidden">
@@ -76,10 +95,26 @@ export default function ConsultWorkspace({ params }: { params: { id: string } })
             ))}
           </div>
 
-          <div className="text-xs font-medium text-slate-500 flex items-center gap-2 mt-1">
-            <CheckCircle2 className="w-3 h-3 text-emerald-500" /> 
-            Records from {header.orgs_count} organizations, last updated {header.last_updated}
+          
+          <div className="flex items-center gap-4 mt-2">
+            <div className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5" /> 
+              {header.orgs_count} organizations contributing
+            </div>
+            <div className="text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 px-2 py-1 rounded flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5" /> 
+              Records received from outside hospitals: 14 new this week
+            </div>
+            <div className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5" /> 
+              2 Alerts raised from outside data
+            </div>
+            <div className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded flex items-center gap-1.5">
+              <ShieldAlert className="w-3.5 h-3.5" /> 
+              3 Repeat tests avoided
+            </div>
           </div>
+
         </div>
 
         <div className="flex flex-col items-end gap-2">
@@ -104,21 +139,45 @@ export default function ConsultWorkspace({ params }: { params: { id: string } })
           <div className="p-4 border-b border-slate-100">
             <h3 className="text-xs font-bold text-slate-800 uppercase mb-3 flex items-center gap-2"><Activity className="w-4 h-4 text-blue-500"/> Active Problems</h3>
             <div className="space-y-3">
-              {conditions.map((c: any, i: number) => (
+              {conditions?.map((c: any, i: number) => (
                 <div key={i} className="text-sm">
                   <div className="font-semibold text-slate-900 cursor-pointer hover:text-emerald-600">{c.name}</div>
-                  <div className="text-xs text-slate-500">Onset: {c.onset}</div>
+                  <div className="text-xs text-slate-500 flex justify-between">
+                    <span>Onset: {c.onset}</span>
+                    {c.org && <span className="text-[10px] text-slate-400 font-bold bg-slate-50 px-1 border border-slate-200 rounded uppercase">{c.org}</span>}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
-
+          
+          <div className="p-4 border-b border-slate-100">
+            <h3 className="text-xs font-bold text-slate-800 uppercase mb-3 flex items-center gap-2">Reconciled Meds</h3>
+            <div className="space-y-3">
+              {medications?.map((m: any, i: number) => (
+                <div key={i} className="text-sm">
+                  <div className="font-bold text-slate-900 leading-tight">{m.name}</div>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-xs text-slate-600">{m.dose} • {m.freq}</span>
+                    {m.org && <span className="text-[10px] text-slate-400 font-bold bg-slate-50 px-1 border border-slate-200 rounded uppercase">{m.org}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
           <div className="p-4 border-b border-slate-100">
             <h3 className="text-xs font-bold text-slate-800 uppercase mb-3">Vitals</h3>
             <div className="space-y-2">
-              {vitals.map((v: any, i: number) => (
-                <div key={i} className="flex justify-between items-center text-sm cursor-pointer hover:bg-slate-50 p-1 -mx-1 rounded">
-                  <span className="text-slate-600">{v.name}</span>
+              {vitals?.map((v: any, i: number) => (
+                <div key={i} className="flex justify-between items-center text-sm p-1 -mx-1 rounded">
+                  <div>
+                    <div className="text-slate-600">{v.name}</div>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-[9px] text-slate-400">{v.date}</span>
+                      {v.org && <span className="text-[9px] text-slate-400 bg-slate-50 border border-slate-100 px-1 rounded uppercase">{v.org}</span>}
+                    </div>
+                  </div>
                   <span className="font-bold text-slate-900">{v.value}</span>
                 </div>
               ))}
@@ -128,15 +187,19 @@ export default function ConsultWorkspace({ params }: { params: { id: string } })
           <div className="p-4 border-b border-slate-100">
             <h3 className="text-xs font-bold text-slate-800 uppercase mb-3">Key Labs</h3>
             <div className="space-y-3">
-              {labs.map((l: any, i: number) => (
-                <div key={i} className="flex justify-between items-center text-sm cursor-pointer hover:bg-slate-50 p-1 -mx-1 rounded group">
+              {labs?.map((l: any, i: number) => (
+                <div key={i} className="flex justify-between items-center text-sm p-1 -mx-1 rounded group">
                   <div>
-                    <div className="text-slate-800 font-medium group-hover:text-emerald-600">{l.name}</div>
-                    <div className="text-xs text-slate-500">{l.date}</div>
+                    <div className="text-slate-800 font-medium">{l.name}</div>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-[9px] text-slate-400">{l.date}</span>
+                      {l.org && <span className="text-[9px] text-slate-400 bg-slate-50 border border-slate-100 px-1 rounded uppercase">{l.org}</span>}
+                    </div>
                   </div>
                   <div className="flex items-center gap-1 font-bold text-slate-900">
                     {l.value} 
-                    {l.trend === 'up' ? <ArrowUpRight className="w-3 h-3 text-red-500"/> : <ArrowDownRight className="w-3 h-3 text-emerald-500"/>}
+                    {l.trend === 'up' && <ArrowUpRight className="w-3 h-3 text-red-500"/>}
+                    {l.trend === 'down' && <ArrowDownRight className="w-3 h-3 text-blue-500"/>}
                   </div>
                 </div>
               ))}
@@ -147,7 +210,7 @@ export default function ConsultWorkspace({ params }: { params: { id: string } })
         {/* ZONE 3: MAIN AREA (Tabs) */}
         <main className="flex-1 flex flex-col bg-slate-50 overflow-hidden relative">
           <div className="flex items-center gap-1 px-4 pt-4 border-b border-slate-200 bg-white">
-            {["Brief", "Timeline", "Problems", "Medications", "Labs", "Notes & Visits"].map((tab) => (
+            {["Brief", "Timeline", "Problems", "Medications", "Labs", "Imaging & Reports", "Notes & Visits", "Immunizations", "Documents"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -307,60 +370,68 @@ export default function ConsultWorkspace({ params }: { params: { id: string } })
                     <FileText className="w-4 h-4" /> Add Note
                   </button>
                 </div>
-                <div className="p-6 text-slate-500 text-center py-8">
-                  Unified notes and discharge summaries appear here.
-                </div>
+                <div className="divide-y divide-slate-100 px-6">{historyForTab.map((record:any)=><article key={record.id} className="flex flex-wrap justify-between gap-3 py-4"><div><h4 className="font-semibold text-slate-900">{record.label}</h4><p className="mt-1 text-sm text-slate-600">{record.source_name}{record.detail?` · ${record.detail}`:''}</p></div><div className="text-right"><time className="text-sm text-slate-500">{record.recorded_date}</time><p className="mt-1 text-xs capitalize text-slate-500">{record.type}</p></div></article>)}{historyForTab.length===0&&<p className="py-8 text-center text-sm text-slate-500">No verified visits or notes have been shared for this patient.</p>}</div>
               </div>
             )}
 
-            {["Timeline", "Problems"].includes(activeTab) && (
-              <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-                <FileText className="w-12 h-12 mb-4 opacity-50" />
-                <p>Content for {activeTab} is unified from {header.orgs_count} sources.</p>
-              </div>
+            {["Timeline", "Problems", "Imaging & Reports"].includes(activeTab) && (
+              <section className="mx-auto max-w-4xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><header className="border-b border-slate-100 bg-slate-50 px-5 py-4"><h3 className="font-bold text-slate-900">{activeTab==='Timeline'?'Complete provider timeline':activeTab}</h3><p className="mt-1 text-sm text-slate-600">Verified history consolidated from {header.orgs_count} provider sources.</p></header><div className="divide-y divide-slate-100 px-5">{historyForTab.map((record:any)=><article key={record.id} className="flex flex-wrap justify-between gap-3 py-4"><div><h4 className="font-semibold text-slate-900">{record.label}</h4><p className="mt-1 text-sm text-slate-600"><span className="capitalize">{record.type}</span> · {record.source_name}{record.detail?` · ${record.detail}`:''}</p></div><time className="shrink-0 text-sm text-slate-500">{record.recorded_date}</time></article>)}{historyForTab.length===0&&<p className="py-10 text-center text-sm text-slate-500">No verified records have been shared for this patient.</p>}</div></section>
             )}
           </div>
         </main>
 
-        {/* ZONE 4: RIGHT PANEL (Clinical Checks) */}
+        
+        {/* ZONE 4: RIGHT PANEL (Safety Panel) */}
         <aside className="w-80 shrink-0 bg-slate-50 border-l border-slate-200 flex flex-col">
           <div className="p-4 border-b border-slate-200 font-bold text-xs uppercase tracking-wider text-slate-800 bg-amber-50 flex items-center justify-between">
-            <span className="flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-amber-600"/> Clinical Checks</span>
+            <span className="flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-amber-600"/> Safety Panel</span>
             <span className="bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full">2</span>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            <div className="p-3 bg-white border border-red-200 rounded-xl shadow-sm border-l-4 border-l-red-500">
-              <div className="text-xs font-bold text-red-800 uppercase mb-1">Interaction Alert</div>
-              <div className="text-sm font-semibold text-slate-800 mb-1">Aspirin + Ibuprofen</div>
-              <div className="text-xs text-slate-600 mb-2">Increased risk of GI bleeding. Unified from Metro Diagnostics and Sanjeevani.</div>
-              <div className="flex gap-2">
-                <button className="text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded">Acknowledge</button>
-                <button className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded">Modify Rx</button>
+          <div className="flex-1 overflow-y-auto p-4 space-y-5">
+            <div>
+              <label className="text-xs font-bold text-slate-700 uppercase mb-2 block">Before you order (Search)</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-400" />
+                <input type="text" placeholder="Check prior labs (e.g. HbA1c)..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition shadow-sm" />
               </div>
             </div>
 
-            <div className="p-3 bg-white border border-amber-200 rounded-xl shadow-sm border-l-4 border-l-amber-500">
-              <div className="text-xs font-bold text-amber-800 uppercase mb-1">Duplicate Therapy</div>
-              <div className="text-sm font-semibold text-slate-800 mb-1">Metformin (500mg & 1000mg)</div>
-              <div className="text-xs text-slate-600">Patient has active scripts from two different providers.</div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 uppercase mb-2 block">Before you prescribe (Search)</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-400" />
+                <input type="text" placeholder="Check drug interactions..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition shadow-sm" />
+              </div>
+            </div>
+            
+            <hr className="border-slate-200" />
+            
+            <div className="space-y-4">
+              <div className="p-3 bg-white border border-red-200 rounded-xl shadow-sm border-l-4 border-l-red-500">
+                <div className="text-[10px] font-black tracking-wider text-red-800 uppercase mb-1">Interaction Alert</div>
+                <div className="text-sm font-bold text-slate-800 mb-1">Aspirin + Ibuprofen</div>
+                <div className="text-xs text-slate-600 mb-2 leading-relaxed">Increased risk of GI bleeding. Unified from Metro Diagnostics and Sanjeevani.</div>
+                <div className="flex gap-2 mt-3">
+                  <button className="text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-100 px-2.5 py-1.5 rounded transition">Acknowledge</button>
+                  <button className="text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-2.5 py-1.5 rounded transition">Modify Rx</button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-white border border-amber-200 rounded-xl shadow-sm border-l-4 border-l-amber-500">
+                <div className="text-[10px] font-black tracking-wider text-amber-800 uppercase mb-1">Duplicate Therapy</div>
+                <div className="text-sm font-bold text-slate-800 mb-1">Metformin (500mg & 1000mg)</div>
+                <div className="text-xs text-slate-600 leading-relaxed">Patient has active scripts from two different providers.</div>
+              </div>
             </div>
 
             <hr className="border-slate-200" />
 
             <div>
-              <label className="text-xs font-bold text-slate-700 uppercase mb-2 block">Before you order (Search)</label>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-400" />
-                <input type="text" placeholder="Check if lab was done recently..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-emerald-600" />
-              </div>
-            </div>
-
-            
-            <div>
               <label className="text-xs font-bold text-slate-700 uppercase mb-2 block">Quick Actions</label>
-              <div className="flex gap-2">
-                <button onClick={() => setShowReferralComposer(true)} className="px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded text-xs font-semibold hover:bg-indigo-100">Refer Patient</button>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={() => setShowReferralComposer(true)} className="px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-xs font-bold hover:bg-indigo-100 transition shadow-sm shadow-indigo-100">Refer Patient</button>
+
               </div>
             </div>
 

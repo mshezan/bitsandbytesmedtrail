@@ -13,12 +13,19 @@ const COMMON_DRUGS = [
 ];
 
 export default function PrescriptionComposer({ patientId, onClose, activeConditions, activeAllergies, activeMeds }: any) {
+  const [clinicianName, setClinicianName] = useState("Treating clinician");
   const [rows, setRows] = useState<any[]>([{ id: 1, drug: "", dose: "", route: "Oral", freq: "1-0-1", timing: "After Food", duration: "5 days", instructions: "", problem: "" }]);
   const [searchQ, setSearchQ] = useState("");
   const [showSearch, setShowSearch] = useState<number | null>(null);
   const [warnings, setWarnings] = useState<any[]>([]);
   const [signed, setSigned] = useState(false);
   const [rxId, setRxId] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchAPI("/me").then((me) => setClinicianName(me.user?.name || "Treating clinician")).catch(() => {});
+  }, []);
 
   const addRow = () => setRows([...rows, { id: Date.now(), drug: "", dose: "", route: "Oral", freq: "1-0-1", timing: "After Food", duration: "5 days", instructions: "", problem: "" }]);
   
@@ -76,6 +83,8 @@ export default function PrescriptionComposer({ patientId, onClose, activeConditi
       return;
     }
     
+    setSaving(true);
+    setError("");
     try {
       const res = await fetchAPI(`/hospital/patient/${patientId}/prescription`, {
         method: "POST",
@@ -84,7 +93,9 @@ export default function PrescriptionComposer({ patientId, onClose, activeConditi
       setSigned(true);
       setRxId(res.rx_id);
     } catch (e) {
-      alert("Failed to sign prescription");
+      setError(e instanceof Error ? e.message : "Failed to sign prescription");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -129,7 +140,7 @@ export default function PrescriptionComposer({ patientId, onClose, activeConditi
               <div className="border-b-2 border-black pb-4 mb-6 flex justify-between items-end">
                 <div>
                   <h1 className="text-3xl font-bold">Kaveri Hospital</h1>
-                  <p className="text-sm">Dr. Ramesh Iyer (Reg: KMC-99212)</p>
+                  <p className="text-sm">{clinicianName}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold">Ref: {rxId}</p>
@@ -170,6 +181,7 @@ export default function PrescriptionComposer({ patientId, onClose, activeConditi
 
             {/* Composer Body */}
             <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+              {error && <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
               
               {/* Warnings Panel */}
               {warnings.length > 0 && (
@@ -283,8 +295,8 @@ export default function PrescriptionComposer({ patientId, onClose, activeConditi
               </div>
               <div className="flex gap-3">
                 <button onClick={onClose} className="px-6 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-slate-100 transition">Cancel</button>
-                <button onClick={handleSign} className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                  <Lock className="w-4 h-4" /> Sign & Lock Rx
+                <button onClick={handleSign} disabled={saving || !rows.some(row => row.drug.trim())} className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition shadow-[0_0_15px_rgba(16,185,129,0.3)] disabled:cursor-not-allowed disabled:opacity-50">
+                  <Lock className="w-4 h-4" /> {saving ? "Saving…" : "Sign & Lock Rx"}
                 </button>
               </div>
             </div>

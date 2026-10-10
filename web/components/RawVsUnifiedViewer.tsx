@@ -12,7 +12,7 @@ export default function RawVsUnifiedViewer({ isOpen, onClose }: { isOpen: boolea
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
           <div>
-            <h2 className="text-lg font-bold text-slate-800">Pipeline Inspector</h2>
+            <h2 className="text-lg font-bold text-slate-800">Data Sync Trace</h2>
             <p className="text-xs text-slate-500 mt-1">Viewing transformation provenance for record ID: e2a-4b92-881c</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full">
@@ -25,7 +25,7 @@ export default function RawVsUnifiedViewer({ isOpen, onClose }: { isOpen: boolea
           <div className="w-1/2 border-r border-slate-200 flex flex-col bg-slate-900 text-slate-300">
             <div className="px-4 py-2 border-b border-slate-700 bg-slate-800 flex items-center gap-2">
               <Database className="w-4 h-4 text-amber-400" />
-              <span className="text-xs font-bold text-slate-200 uppercase">Raw Payload (Metro Diagnostics)</span>
+              <span className="text-xs font-bold text-slate-200 uppercase">Original Record (Metro Diagnostics)</span>
               <span className="ml-auto text-[10px] font-mono bg-slate-700 px-2 rounded text-slate-400">CSV Export</span>
             </div>
             <div className="p-6 font-mono text-sm overflow-auto leading-relaxed">
@@ -74,7 +74,7 @@ export default function RawVsUnifiedViewer({ isOpen, onClose }: { isOpen: boolea
             <span className="flex items-center gap-1"><CheckCircle2 className="w-4 h-4 text-emerald-500"/> Terminology Mapped</span>
             <span className="flex items-center gap-1"><CheckCircle2 className="w-4 h-4 text-emerald-500"/> Deduplicated</span>
           </div>
-          <button onClick={onClose} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-sm rounded-lg">Close Inspector</button>
+          <button onClick={onClose} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-sm rounded-lg">Close Trace</button>
         </div>
       </div>
     </div>

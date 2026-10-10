@@ -15,8 +15,8 @@ export default function PopulationInsights() {
   return (
     <div className="flex flex-col h-screen">
       <header className="px-8 py-6 border-b border-slate-200 bg-white shrink-0">
-        <h1 className="text-3xl font-bold text-slate-900">Population Insights</h1>
-        <p className="text-slate-500 mt-2">Global risk stratification across all unified patient records.</p>
+        <h1 className="text-3xl font-bold text-slate-900">Active Alerts</h1>
+        <p className="text-slate-500 mt-2">Network-wide risk stratification and proactive clinical alerts across all your patients.</p>
       </header>
 
       <div className="flex-1 p-8 bg-slate-50 overflow-y-auto">

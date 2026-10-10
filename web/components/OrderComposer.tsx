@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Trash2, AlertTriangle, Printer, Lock, X, Check, Search } from "lucide-react";
 import { fetchAPI } from "@/lib/api";
 
@@ -14,10 +14,17 @@ const COMMON_TESTS = [
 ];
 
 export default function OrderComposer({ patientId, onClose, activeLabs }: any) {
+  const [clinicianName, setClinicianName] = useState("Treating clinician");
   const [rows, setRows] = useState<any[]>([{ id: 1, test: "", priority: "Routine", reason: "", fasting: false, override: "" }]);
   const [signed, setSigned] = useState(false);
   const [orderId, setOrderId] = useState("");
   const [showSearch, setShowSearch] = useState<number | null>(null);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchAPI("/me").then((me) => setClinicianName(me.user?.name || "Treating clinician")).catch(() => {});
+  }, []);
 
   const addRow = () => setRows([...rows, { id: Date.now(), test: "", priority: "Routine", reason: "", fasting: false, override: "" }]);
   const removeRow = (id: number) => setRows(rows.filter(r => r.id !== id));
@@ -41,6 +48,7 @@ export default function OrderComposer({ patientId, onClose, activeLabs }: any) {
       }
     }
 
+    setSaving(true); setError("");
     try {
       const res = await fetchAPI(`/hospital/patient/${patientId}/order`, {
         method: "POST",
@@ -49,7 +57,9 @@ export default function OrderComposer({ patientId, onClose, activeLabs }: any) {
       setSigned(true);
       setOrderId(res.order_id);
     } catch (e) {
-      alert("Failed to place order");
+      setError(e instanceof Error ? e.message : "Failed to place order");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -89,7 +99,7 @@ export default function OrderComposer({ patientId, onClose, activeLabs }: any) {
               <div className="border-b-2 border-black pb-4 mb-6 flex justify-between items-end">
                 <div>
                   <h1 className="text-3xl font-bold">Kaveri Hospital - Lab Requisition</h1>
-                  <p className="text-sm">Dr. Ramesh Iyer (Reg: KMC-99212)</p>
+                  <p className="text-sm">{clinicianName}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold">Ref: {orderId}</p>
@@ -115,6 +125,7 @@ export default function OrderComposer({ patientId, onClose, activeLabs }: any) {
         ) : (
           <>
             <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+              {error && <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
               <div className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
                 <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-slate-100 border-b border-slate-200 font-semibold text-slate-600 text-xs uppercase tracking-wider">
                   <div className="col-span-4">Test / Investigation</div>
@@ -211,8 +222,8 @@ export default function OrderComposer({ patientId, onClose, activeLabs }: any) {
             <div className="p-6 border-t border-slate-200 bg-white flex justify-between items-center shrink-0">
               <div className="flex gap-3 ml-auto">
                 <button onClick={onClose} className="px-6 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-slate-100 transition">Cancel</button>
-                <button onClick={handleSign} className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-[0_0_15px_rgba(37,99,235,0.3)]">
-                  <Lock className="w-4 h-4" /> Sign & Place Order
+                <button onClick={handleSign} disabled={saving || !rows.some(row => row.test.trim())} className="flex items-center gap-2 px-6 py-2.5 bg-emerald-700 text-white rounded-xl font-bold hover:bg-emerald-800 transition shadow-[0_0_15px_rgba(16,185,129,0.25)] disabled:cursor-not-allowed disabled:opacity-50">
+                  <Lock className="w-4 h-4" /> {saving ? "Saving…" : "Sign & Place Order"}
                 </button>
               </div>
             </div>
