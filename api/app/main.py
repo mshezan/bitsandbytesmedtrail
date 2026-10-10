@@ -25,7 +25,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-from app.routers import ingestion_router, auth_router, patient_router, record_router, timeline_router, connector_router, upload_router, share_router, audit_router, care_router, hospital_router, ownership_router
+from app.routers import ingestion_router, auth_router, demo_router, patient_router, record_router, timeline_router, connector_router, upload_router, share_router, audit_router, care_router, hospital_router, ownership_router
 from app.routers.v1.ingest import router as ingest_router
 from app.routers.v1.system import router as system_router
 
@@ -40,6 +40,7 @@ app.include_router(auth_router.router)
 app.include_router(patient_router.router)
 app.include_router(hospital_router.router)
 app.include_router(ingestion_router.router)
+app.include_router(demo_router.router)
 app.include_router(ownership_router.router)
 
 app.include_router(ingest_router, prefix="/api/v1")
