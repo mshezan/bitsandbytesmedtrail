@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Activity, FileText, Database, ShieldCheck, HeartPulse, RefreshCw } from "lucide-react";
+import NetworkMap from "@/components/NetworkMap";
 
 type Status = {
   patients: number;
@@ -11,14 +12,22 @@ type Status = {
 };
 
 export default function LandingPage() {
-  const [status, setStatus] = useState<Status | null>(null);
+  
+  const [stats, setStats] = useState<any>(null);
+  const [nodes, setNodes] = useState<any[]>([]);
   
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/demo/status`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/hospital/integration/stats`)
       .then(res => res.json())
-      .then(data => setStatus(data))
+      .then(data => setStats(data))
+      .catch(console.error);
+
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/hospital/integration/nodes`)
+      .then(res => res.json())
+      .then(data => setNodes(data))
       .catch(console.error);
   }, []);
+
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
@@ -162,6 +171,21 @@ export default function LandingPage() {
         </div>
       </section>
 
+
+      {/* 4.5 CONNECTED NETWORK */}
+      <section className="py-20 bg-slate-50 px-6 border-b border-slate-200">
+        <div className="max-w-7xl mx-auto flex flex-col items-center">
+          <div className="text-center max-w-2xl mb-12">
+            <h2 className="text-3xl font-bold mb-4">The Connected Network</h2>
+            <p className="text-slate-600">MedTrail actively standardizes diverse incoming formats into one unified schema. The visualization below represents the live integration topology.</p>
+          </div>
+          <div className="w-full bg-white shadow-sm border border-slate-200 rounded-3xl p-4">
+             <NetworkMap nodes={nodes} scale={0.7} />
+          </div>
+        </div>
+      </section>
+
+
       {/* 5. For Patients vs For Hospitals */}
       <section id="patients" className="py-20 bg-white px-6">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12">
@@ -204,23 +228,29 @@ export default function LandingPage() {
         </div>
       </section>
 
+      
       {/* 7. Numbers Strip */}
       <section className="bg-emerald-700 text-white py-12 px-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-3 gap-8 text-center">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           <div>
-            <div className="text-4xl font-black mb-2">{status?.patients || "-"}</div>
-            <div className="text-emerald-200 text-sm font-medium uppercase tracking-wider">Patients Unified</div>
+            <div className="text-4xl font-black mb-2">{stats?.organizations_connected || "-"}</div>
+            <div className="text-emerald-200 text-sm font-medium uppercase tracking-wider">Connected Hospitals</div>
           </div>
           <div>
-            <div className="text-4xl font-black mb-2">{status?.records || "-"}</div>
-            <div className="text-emerald-200 text-sm font-medium uppercase tracking-wider">Records Processed</div>
+            <div className="text-4xl font-black mb-2">{stats?.records_unified || "-"}</div>
+            <div className="text-emerald-200 text-sm font-medium uppercase tracking-wider">Records Unified</div>
           </div>
           <div>
-            <div className="text-4xl font-black mb-2">{status?.sources || "-"}</div>
-            <div className="text-emerald-200 text-sm font-medium uppercase tracking-wider">Connected Sources</div>
+            <div className="text-4xl font-black mb-2">{stats?.patients_matched_multiple || "-"}</div>
+            <div className="text-emerald-200 text-sm font-medium uppercase tracking-wider">Cross-Matched Patients</div>
+          </div>
+          <div>
+            <div className="text-4xl font-black mb-2">{stats?.mapping_coverage || "-"}%</div>
+            <div className="text-emerald-200 text-sm font-medium uppercase tracking-wider">Mapping Coverage</div>
           </div>
         </div>
       </section>
+
 
       {/* Footer */}
       <footer className="bg-slate-900 text-slate-400 py-12 px-6 text-center text-sm">
