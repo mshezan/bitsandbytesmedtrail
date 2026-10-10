@@ -105,6 +105,8 @@ class Record(Base):
     type: Mapped[str] = mapped_column(String(32), nullable=False)
     fhir: Mapped[dict] = mapped_column(JSONB, nullable=False)
     source_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    content_hash: Mapped[str | None] = mapped_column(String(64))
+    source_id: Mapped[str | None] = mapped_column(String)
     source_type: Mapped[str] = mapped_column(String(32), nullable=False)
     recorded_date: Mapped[date] = mapped_column(Date, nullable=False)
     confidence: Mapped[float | None] = mapped_column(Float)
@@ -385,3 +387,23 @@ class TriageEntry(Base):
     priority: Mapped[int] = mapped_column(Integer) # 1, 2, 3
     chief_complaint: Mapped[str] = mapped_column(String)
     arrival_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now())
+
+class IntegrationQueue(Base):
+    __tablename__ = "integration_queues"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    queue_type: Mapped[str] = mapped_column(String) # 'dlq', 'mapping_review', 'identity_review'
+    source_org_id: Mapped[str] = mapped_column(String)
+    payload: Mapped[dict] = mapped_column(JSONB)
+    status: Mapped[str] = mapped_column(String, default="pending")
+    reason: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now())
+
+class PipelineLog(Base):
+    __tablename__ = "pipeline_logs"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id: Mapped[str] = mapped_column(String)
+    org_id: Mapped[str] = mapped_column(String)
+    stage: Mapped[str] = mapped_column(String) # FETCH, PARSE, MAP, VALIDATE, RESOLVE, STORE
+    status: Mapped[str] = mapped_column(String) # success, error
+    metrics: Mapped[dict] = mapped_column(JSONB)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now())
